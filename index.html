@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>恶搞小页面</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    background: #000;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+  }
+  .text {
+    color: #fff;
+    font-size: 8vw;
+    font-weight: bold;
+    text-align: center;
+    z-index: 10;
+  }
+  .emoji {
+    position: fixed;
+    top: -100px;
+    font-size: 30px;
+    user-select: none;
+    pointer-events: none;
+    animation: fall linear infinite;
+  }
+  @keyframes fall {
+    0% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="text">看到的人是gay</div>
+  <script>
+    const emojis = ['💩']
+    function createEmoji() {
+      const emoji = document.createElement('div')
+      emoji.classList.add('emoji')
+      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)]
+      emoji.style.left = Math.random() * 100 + 'vw'
+      emoji.style.animationDuration = Math.random() * 3 + 4 + 's'
+      emoji.style.fontSize = Math.random() * 20 + 20 + 'px'
+      document.body.appendChild(emoji)
+      setTimeout(() => emoji.remove(), 7000)
+    }
+    setInterval(createEmoji, 300)
+  </script>
+</body>
+</html>
