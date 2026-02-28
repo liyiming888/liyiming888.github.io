@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D炫光上头小球 · 终极版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    background:#000;
+    overflow:hidden;
+    font-family:Arial;
+    cursor:none;
+    user-select:none;
+}
+#game{
+    width:100vw;
+    height:100vh;
+    position:relative;
+    perspective:1200px;
+    background:radial-gradient(circle at center,#101020 0%,#000 80%);
+}
+#score{
+    position:fixed;
+    top:20px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:50px;
+    font-weight:bold;
+    color:#0ff;
+    text-shadow:0 0 15px #0ff,0 0 40px #0ff;
+    z-index:999;
+}
+#player{
+    width:38px;
+    height:38px;
+    background:radial-gradient(circle,#0ff,#08f);
+    border-radius:50%;
+    position:absolute;
+    box-shadow:0 0 30px #0ff,0 0 60px #08f;
+    z-index:100;
+    transform:translate(-50%,-50%);
+}
+.trail{
+    position:absolute;
+    width:12px;
+    height:12px;
+    background:#0ff;
+    border-radius:50%;
+    pointer-events:none;
+    opacity:0.7;
+    z-index:50;
+}
+.obstacle{
+    position:absolute;
+    background:linear-gradient(90deg,#ff2266,#ff8800);
+    height:24px;
+    box-shadow:0 0 20px #ff2266;
+    border-radius:6px;
+    z-index:10;
+}
+#ui{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    color:#fff;
+    z-index:1000;
+}
+#over{display:none}
+button{
+    padding:16px 36px;
+    font-size:22px;
+    background:#0ff;
+    border:none;
+    border-radius:12px;
+    font-weight:bold;
+    margin-top:24px;
+    box-shadow:0 0 20px #0ff;
+    cursor:pointer;
+}
+button:active{transform:scale(0.92)}
+@keyframes shake{
+    0%{transform:translate(0,0)}
+    25%{transform:translate(-6px,4px)}
+    50%{transform:translate(4px,-3px)}
+    75%{transform:translate(-3px,-5px)}
+    100%{transform:translate(0,0)}
+}
+.shake{animation:shake 0.1s 4}
+@keyframes pulse{
+    0%{box-shadow:0 0 25px #0ff,0 0 50px #08f}
+    50%{box-shadow:0 0 40px #0ff,0 0 80px #08f}
+    100%{box-shadow:0 0 25px #0ff,0 0 50px #08f}
+}
+.pulse{animation:pulse 0.4s infinite}
+</style>
+</head>
+<body>
+
+<div id="score">0</div>
+<div id="game"></div>
+
+<div id="ui">
+  <div id="start">
+    <h1 style="color:#0ff;text-shadow:0 0 20px #0ff">3D炫光上头小球</h1>
+    <button onclick="start()">开始上头 →</button>
+  </div>
+  <div id="over">
+    <h1 style="color:#ff2266">撞碎了！</h1>
+    <p style="font-size:24px">得分：<span id="final">0</span></p>
+    <button onclick="restart()">再来一局！</button>
+  </div>
+</div>
+
+<script>
+const game = document.getElementById('game');
+const scoreText = document.getElementById('score');
+const startBox = document.getElementById('start');
+const overBox = document.getElementById('over');
+const finalScore = document.getElementById('final');
+
+let w = innerWidth, h = innerHeight;
+let player;
+let score = 0;
+let speed = 7;
+let rotateSpeed = 0;
+let playing = false;
+let obstacles = [];
+let px = w/2, py = h/2;
+
+// 鼠标控制
+addEventListener('mousemove', e=>{
+    px = e.x; py = e.y;
+});
+addEventListener('touchmove', e=>{
+    px = e.touches[0].clientX;
+    py = e.touches[0].clientY;
+});
+
+// 小球拖尾特效
+function createTrail(x,y){
+    let t = document.createElement('div');
+    t.className = 'trail';
+    t.style.left = x+'px';
+    t.style.top = y+'px';
+    game.appendChild(t);
+    setTimeout(()=>t.remove(), 300);
+}
+
+// 创建玩家
+function createPlayer(){
+    player = document.createElement('div');
+    player.id = 'player';
+    player.classList.add('pulse');
+    game.appendChild(player);
+}
+
+// 创建障碍
+function spawnObstacle(){
+    if(!playing) return;
+    let o = document.createElement('div');
+    o.className = 'obstacle';
+    o.style.width = (Math.random()*200 + 120)+'px';
+    o.style.left = Math.random()*(w-220)+'px';
+    o.style.top = '-60px';
+    game.appendChild(o);
+    obstacles.push(o);
+}
+
+// 游戏循环
+function update(){
+    if(!playing) return;
+
+    // 移动小球
+    player.style.left = px+'px';
+    player.style.top = py+'px';
+    createTrail(px,py);
+
+    // 移动障碍
+    for(let i=0;i<obstacles.length;i++){
+        let o = obstacles[i];
+        let y = parseFloat(o.style.top);
+        y += speed;
+        o.style.top = y+'px';
+        o.style.transform = `rotate(${rotateSpeed}deg)`;
+
+        // 出屏加分
+        if(y > h){
+            o.remove();
+            obstacles.splice(i,1); i--;
+            score++;
+            scoreText.innerText = score;
+            speed += 0.18;
+            rotateSpeed += 0.25;
+        }
+
+        // 碰撞
+        let pr = player.getBoundingClientRect();
+        let or = o.getBoundingClientRect();
+        if(
+            pr.right > or.left+8 &&
+            pr.left < or.right-8 &&
+            pr.bottom > or.top+8 &&
+            pr.top < or.bottom-8
+        ){
+            gameOver();
+        }
+    }
+    requestAnimationFrame(update);
+}
+
+// 开始游戏
+function start(){
+    startBox.style.display = 'none';
+    playing = true;
+    createPlayer();
+    update();
+    setInterval(spawnObstacle, 500);
+}
+
+// 游戏结束
+function gameOver(){
+    playing = false;
+    document.body.classList.add('shake');
+    finalScore.innerText = score;
+    overBox.style.display = 'block';
+    setTimeout(()=>document.body.classList.remove('shake'), 400);
+}
+
+// 重启
+function restart(){
+    obstacles.forEach(o=>o.remove());
+    obstacles = [];
+    score = 0;
+    speed = 7;
+    rotateSpeed = 0;
+    scoreText.innerText = 0;
+    overBox.style.display = 'none';
+    playing = true;
+}
+</script>
+</body>
+</html>
