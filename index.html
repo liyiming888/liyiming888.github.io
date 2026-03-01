@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>3D炫光上头小球 · 最终纯净版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-focus-ring-color: transparent !important;
+    outline: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+}
+html,body{
+    width:100%;
+    height:100%;
+    background:#000;
+    overflow:hidden;
+    font-family:Arial, sans-serif;
+    cursor:pointer;
+}
+.menu{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;
+    height:100vh;
+    background:radial-gradient(circle at center,#101025 0%,#000 80%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    color:#fff;
+    padding:20px;
+}
+.menu h1{
+    font-size: clamp(32px, 8vw, 52px);
+    color:#0ff;
+    text-shadow:0 0 20px #0ff;
+    margin-bottom: clamp(20px, 5vh, 40px);
+    text-align:center;
+}
+.menu h2{
+    font-size: clamp(24px, 6vw, 38px);
+    color:#0ff;
+    text-shadow:0 0 15px #0ff;
+    margin-bottom: clamp(15px, 4vh, 30px);
+    text-align:center;
+}
+.menu-btn{
+    width: min(90%, 300px);
+    padding: clamp(12px, 3vh, 18px) 0;
+    margin: clamp(6px, 2vh, 12px) 0;
+    font-size: clamp(16px, 4vw, 22px);
+    font-weight:bold;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    transition:all 0.2s;
+    text-align:center;
+    background:none;
+}
+.menu-btn.primary{
+    background:#0ff;
+    color:#000;
+    box-shadow:0 0 20px #0ff;
+}
+.menu-btn.secondary{
+    background:#ff2266;
+    color:#fff;
+    box-shadow:0 0 20px #ff2266;
+}
+.menu-btn.tertiary{
+    background:#8844ff;
+    color:#fff;
+    box-shadow:0 0 20px #8844ff;
+}
+.menu-btn.gold{
+    background:#ffd700;
+    color:#000;
+    box-shadow:0 0 20px #ffd700;
+}
+.menu-btn.ai{
+    background:#00ff88;
+    color:#000;
+    box-shadow:0 0 20px #00ff88;
+}
+.menu-btn:hover{transform:scale(1.03)}
+.menu-btn:active{transform:scale(0.97);background:none;}
+.menu-btn:disabled{
+    background:#333;
+    box-shadow:none;
+    opacity:0.5;
+    cursor:not-allowed;
+    transform:none;
+}
+.gold-display{
+    position:absolute;
+    top:2vh;
+    right:3vw;
+    font-size: clamp(18px, 4vw, 26px);
+    font-weight:bold;
+    color:#ffd700;
+    text-shadow:0 0 10px #ffd700;
+    cursor:pointer;
+    text-align:right;
+}
+.score-display{
+    position:absolute;
+    top:7vh;
+    right:3vw;
+    font-size: clamp(16px, 3.5vw, 22px);
+    font-weight:bold;
+    color:#0ff;
+    text-shadow:0 0 10px #0ff;
+    text-align:right;
+}
+.back-btn{
+    position:absolute;
+    top:2vh;
+    left:3vw;
+    padding: clamp(6px, 1.5vh, 10px) clamp(12px, 3vw, 20px);
+    background:#333;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size: clamp(14px, 3vw, 18px);
+}
+.back-btn:hover{background:#555}
+
+#settingsBtn{
+    position:absolute;
+    bottom:3vh;
+    left:50%;
+    transform:translateX(-50%);
+    width: clamp(45px, 10vw, 55px);
+    height: clamp(45px, 10vw, 55px);
+    background:rgba(255,255,255,0.1);
+    border:2px solid #0ff;
+    border-radius:50%;
+    color:#0ff;
+    font-size: clamp(20px, 5vw, 26px);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:10000;
+}
+#settingsBtn:hover{
+    background:rgba(255,255,255,0.2);
+    box-shadow:0 0 15px #0ff;
+}
+
+.toast{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.95);
+    padding: clamp(10px, 2vh, 15px) clamp(20px, 4vw, 30px);
+    border-radius:10px;
+    border:2px solid #ffd700;
+    color:#fff;
+    font-size: clamp(14px, 3.5vw, 18px);
+    z-index:99999;
+    display:none;
+    white-space:nowrap;
+}
+
+/* AI对话 全屏界面 */
+#aiChatPanel{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    background:radial-gradient(circle at center,#101025 0%,#000 80%);
+    z-index:99999;
+    display:none;
+    flex-direction:column;
+    padding:20px;
+    color:#fff;
+}
+#aiChatPanel h3{
+    color:#00ff88;
+    text-align:center;
+    margin:10px 0 20px 0;
+    font-size: clamp(20px, 5vw, 28px);
+}
+.chat-box{
+    flex:1;
+    overflow-y:auto;
+    background:rgba(255,255,255,0.05);
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:15px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+.chat-message{
+    max-width:85%;
+    padding:10px 14px;
+    border-radius:14px;
+    font-size: clamp(15px, 3.5vw, 17px);
+    line-height:1.4;
+}
+.user-msg{
+    align-self:flex-end;
+    background:#0ff;
+    color:#000;
+}
+.ai-msg{
+    align-self:flex-start;
+    background:#8844ff;
+    color:#fff;
+}
+.chat-input-box{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+}
+#chatInput{
+    flex:1;
+    padding:14px;
+    border:2px solid #00ff88;
+    border-radius:10px;
+    background:#000;
+    color:#fff;
+    outline:none;
+    font-size: clamp(15px, 3.5vw, 17px);
+}
+#sendChatBtn{
+    padding:14px 18px;
+    background:#00ff88;
+    color:#000;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+    font-size: clamp(15px, 3.5vw, 17px);
+}
+#aiChatPanel .back-btn{
+    position:unset;
+    align-self:center;
+    width:min(90%,200px);
+    text-align:center;
+}
+
+.skin-list{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: clamp(10px, 3vw, 20px);
+    margin: clamp(15px, 4vh, 30px) 0;
+    width:min(95%,380px);
+    justify-content:center;
+}
+.skin-item{
+    padding: clamp(10px, 2vh, 15px);
+    background:rgba(255,255,255,0.1);
+    border-radius:12px;
+    text-align:center;
+    border:2px solid transparent;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+.skin-item.active{
+    border-color:#0ff;
+    box-shadow:0 0 15px #0ff;
+}
+.skin-preview{
+    width: clamp(50px, 12vw, 65px);
+    height: clamp(50px, 12vw, 65px);
+    border-radius:50%;
+    margin:0 auto clamp(6px, 1.5vh, 10px);
+}
+.skin-name{
+    font-size: clamp(12px, 2.5vw, 14px);
+    margin-bottom: clamp(4px, 1vh, 8px);
+}
+.skin-btn{
+    width:100%;
+    padding: clamp(4px, 1vh, 6px) 0;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size: clamp(10px, 2vw, 12px);
+    font-weight:bold;
+    background:#333;
+}
+.skin-btn:disabled{
+    background:#333;
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
+.exchange-box{
+    width:min(95%,340px);
+    background:rgba(255,255,255,0.1);
+    padding: clamp(20px, 4vh, 30px);
+    border-radius:15px;
+    border:2px solid #ffd700;
+    text-align:center;
+    margin:clamp(10px, 3vh, 20px) 0;
+}
+.exchange-rule{
+    font-size: clamp(14px, 3.5vw, 18px);
+    margin-bottom: clamp(10px, 2vh, 20px);
+    color:#ffd700;
+}
+.exchange-input-box{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: clamp(6px, 2vw, 10px);
+    margin: clamp(10px, 2vh, 20px) 0;
+}
+.exchange-input{
+    width:min(60%,160px);
+    padding: clamp(8px, 2vh, 12px);
+    font-size: clamp(14px, 3.5vw, 18px);
+    border:2px solid #ffd700;
+    border-radius:8px;
+    background:#000;
+    color:#fff;
+    text-align:center;
+    outline:none;
+}
+.exchange-input:focus{
+    box-shadow:0 0 15px #ffd700;
+}
+.exchange-count{
+    font-size: clamp(13px, 3vw, 16px);
+    margin: clamp(5px, 1vh, 10px) 0;
+    color:#fff;
+}
+
+.item-box{
+    width:min(95%,340px);
+    background:rgba(255,255,255,0.1);
+    padding: clamp(20px, 4vh, 30px);
+    border-radius:15px;
+    border:2px solid #ffd700;
+    text-align:center;
+    margin:clamp(10px, 3vh, 20px) 0;
+}
+.item-title{
+    font-size: clamp(16px, 4vw, 20px);
+    color:#ffd700;
+    margin-bottom:15px;
+}
+.item-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid #333;
+}
+.item-desc{
+    font-size:clamp(14px,3.5vw,16px);
+    color:#fff;
+}
+.item-price{
+    font-size:clamp(14px,3.5vw,16px);
+    color:#ffd700;
+    font-weight:bold;
+}
+
+#settingsPanel{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#111;
+    border:3px solid #0ff;
+    padding: clamp(20px, 4vh, 30px);
+    border-radius:15px;
+    z-index:99999;
+    display:none;
+    text-align:center;
+    width:min(90%,340px);
+}
+#settingsPanel h3{
+    color:#0ff;
+    margin-bottom: clamp(10px, 2vh, 20px);
+    font-size: clamp(18px, 4.5vw, 24px);
+}
+.setting-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin: clamp(8px, 2vh, 15px) 0;
+    padding: clamp(6px, 1.5vh, 10px);
+    background:rgba(255,255,255,0.05);
+    border-radius:8px;
+}
+.setting-label{
+    font-size: clamp(14px, 3.5vw, 16px);
+    color:#fff;
+}
+.switch{
+    position:relative;
+    width: clamp(45px, 10vw, 50px);
+    height: clamp(22px, 5vw, 24px);
+    background:#333;
+    border-radius:12px;
+    cursor:pointer;
+    transition:background 0.3s;
+}
+.switch.active{
+    background:#0ff;
+}
+.switch::after{
+    content:'';
+    position:absolute;
+    width: clamp(18px, 4vw, 20px);
+    height: clamp(18px, 4vw, 20px);
+    background:#fff;
+    border-radius:50%;
+    top:2px;
+    left:2px;
+    transition:all 0.3s;
+}
+.switch.active::after{
+    left:calc(100% - clamp(18px, 4vw, 20px) - 2px);
+}
+.danger-btn{
+    width:100%;
+    padding: clamp(8px, 2vh, 12px);
+    margin-top:clamp(10px, 3vh, 20px);
+    background:#ff2266;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    font-size: clamp(14px, 3.5vw, 16px);
+}
+.danger-btn:hover{
+    background:#ff0044;
+}
+
+#gameUI{display:none}
+#game{
+    width:100vw;
+    height:100vh;
+    position:relative;
+    perspective:1200px;
+    background:radial-gradient(circle at center,#101020 0%,#000 80%);
+}
+#score{
+    position:fixed;
+    top:2vh;
+    left:50%;
+    transform:translateX(-50%);
+    font-size: clamp(40px, 10vw, 55px);
+    font-weight:bold;
+    color:#0ff;
+    text-shadow:0 0 15px #0ff;
+    z-index:99;
+}
+#pauseBtn{
+    position:fixed;
+    top:2vh;
+    left:3vw;
+    width: clamp(40px, 9vw, 48px);
+    height: clamp(40px, 9vw, 48px);
+    background:rgba(255,255,255,0.2);
+    border:2px solid #fff;
+    border-radius:8px;
+    color:#fff;
+    font-size: clamp(16px, 4vw, 20px);
+    cursor:pointer;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.item-use-box{
+    position:fixed;
+    bottom:4vh;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:clamp(15px,4vw,25px);
+    z-index:100;
+}
+.item-use-btn{
+    width:clamp(60px,15vw,80px);
+    height:clamp(40px,10vw,50px);
+    background:rgba(255,215,0,0.2);
+    border:2px solid #ffd700;
+    border-radius:8px;
+    color:#ffd700;
+    font-size:clamp(12px,3vw,14px);
+    font-weight:bold;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    /* 关键：按钮自己捕获事件，不传给游戏 */
+    pointer-events: auto;
+}
+.item-use-btn.disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+.item-use-text{
+    line-height:1.2;
+}
+
+#player{
+    width: clamp(32px, 8vw, 40px);
+    height: clamp(32px, 8vw, 40px);
+    border-radius:50%;
+    position:absolute;
+    z-index:100;
+    transform:translate(-50%,-50%);
+}
+.trail{
+    position:absolute;
+    width: clamp(10px, 2.5vw, 14px);
+    height: clamp(10px, 2.5vw, 14px);
+    border-radius:50%;
+    pointer-events:none;
+    opacity:0.7;
+    z-index:50;
+}
+.obstacle{
+    position:absolute;
+    background:linear-gradient(90deg,#ff2266,#ff8800);
+    height: clamp(20px, 5vh, 26px);
+    box-shadow:0 0 20px #ff2266;
+    border-radius:6px;
+    z-index:10;
+}
+
+.modal{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.9);
+    padding: clamp(25px, 5vh, 40px);
+    border-radius:20px;
+    border:3px solid #0ff;
+    text-align:center;
+    z-index:1000;
+    display:none;
+    width:min(90%,320px);
+}
+.modal h2{
+    font-size: clamp(24px, 6vw, 36px);
+    margin-bottom: clamp(10px, 2vh, 20px);
+}
+.modal p{
+    font-size: clamp(16px, 4vw, 20px);
+    margin-bottom: clamp(5px, 1vh, 10px);
+}
+.modal .menu-btn{
+    width:min(100%,200px);
+    margin:clamp(6px, 1.5vh, 8px) 0;
+}
+
+#devPanel{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#111;
+    border:3px solid #ff0066;
+    padding: clamp(20px, 4vh, 30px);
+    border-radius:15px;
+    z-index:99999;
+    display:none;
+    text-align:center;
+    width:min(90%,280px);
+}
+#devPanel h3{
+    color:#ff0066;
+    margin-bottom: clamp(10px, 2vh, 20px);
+    font-size: clamp(16px, 4vw, 20px);
+}
+.dev-input{
+    padding: clamp(8px, 2vh, 10px);
+    width:min(80%,180px);
+    font-size: clamp(14px, 3.5vw, 16px);
+    text-align:center;
+    margin-bottom: clamp(10px, 2vh, 15px);
+    border-radius:8px;
+    border:2 solid #ff0066;
+    background:#000;
+    color:#fff;
+    outline:none;
+}
+.dev-btn{
+    padding: clamp(6px, 1.5vh, 8px) clamp(12px, 3vw, 16px);
+    background:#ff0066;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size: clamp(14px, 3.5vw, 16px);
+}
+
+@keyframes shake{
+    0%{transform:translate(0,0)}
+    25%{transform:translate(-6px,4px)}
+    50%{transform:translate(4px,-3px)}
+    75%{transform:translate(-3px,-5px)}
+    100%{transform:translate(0,0)}
+}
+.shake{animation:shake 0.1s 4}
+@keyframes pulse{
+    0%{box-shadow:0 0 25px var(--skin-color),0 0 50px var(--skin-color2)}
+    50%{box-shadow:0 0 40px var(--skin-color),0 0 80px var(--skin-color2)}
+    100%{box-shadow:0 0 25px var(--skin-color),0 0 50px var(--skin-color2)}
+}
+.pulse{animation:pulse 0.4s infinite}
+@keyframes toastShow{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(0.8)}
+    50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}
+    100%{opacity=1;transform:translate(-50%,-50%) scale(1)}
+}
+.toast.show{
+    display:block;
+    animation:toastShow 0.3s ease;
+}
+</style>
+</head>
+<body>
+
+<!-- 主菜单 -->
+<div id="mainMenu" class="menu">
+    <h1>3D炫光上头小球</h1>
+    <button class="menu-btn primary" onclick="showDifficultyMenu()">开始游戏</button>
+    <button class="menu-btn ai" onclick="showAIChat()">AI对话（5金币/次）</button>
+    <button class="menu-btn gold" onclick="showExchangeMenu()">金币兑换</button>
+    <button class="menu-btn tertiary" onclick="showSkinMenu()">皮肤兑换</button>
+    <button class="menu-btn gold" onclick="showItemMenu()">道具购买</button>
+    
+    <div class="gold-display">金币: <span id="mainGold">0</span></div>
+    <div class="score-display">累计得分: <span id="mainScore">0</span></div>
+    <div id="settingsBtn" onclick="showSettingsPanel()">⚙️</div>
+</div>
+
+<!-- AI对话面板 -->
+<div id="aiChatPanel">
+    <h3>AI对话 · 每次提问扣5金币</h3>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-input-box">
+        <input type="text" id="chatInput" placeholder="输入你想问的问题...">
+        <button id="sendChatBtn" onclick="sendChat();event.stopPropagation()">发送</button>
+    </div>
+    <button class="back-btn" onclick="hideAIChat()">返回</button>
+</div>
+
+<!-- 难度选择 -->
+<div id="difficultyMenu" class="menu" style="display:none">
+    <h1>选择难度</h1>
+    <button class="menu-btn primary" onclick="startGame('easy')">简单模式</button>
+    <button class="menu-btn secondary" onclick="startGame('normal')">普通模式</button>
+    <button class="menu-btn tertiary" onclick="startGame('hard')">困难模式</button>
+    <button class="back-btn" onclick="showMainMenu()">返回</button>
+    <div class="gold-display">金币: <span id="diffGold">0</span></div>
+    <div class="score-display">累计得分: <span id="diffScore">0</span></div>
+</div>
+
+<!-- 金币兑换 -->
+<div id="exchangeMenu" class="menu" style="display:none">
+    <h2>金币兑换</h2>
+    <button class="back-btn" onclick="showMainMenu()">返回</button>
+    <div class="gold-display">金币: <span id="exchangeGold">0</span></div>
+    <div class="score-display">累计得分: <span id="exchangeScore">0</span></div>
+    
+    <div class="exchange-box">
+        <p class="exchange-rule">兑换规则：5个累计得分 = 1个金币</p>
+        <div class="exchange-count">当前可兑换最大金币数：<span id="maxExchange">0</span></div>
+        <div class="exchange-input-box">
+            <input type="number" class="exchange-input" id="exchangeNum" min="1" value="1">
+            <span>个</span>
+        </div>
+        <div class="exchange-count">需消耗得分：<span id="needScore">5</span></div>
+        <button class="menu-btn gold" onclick="exchangeGold()">确认兑换</button>
+        <button class="menu-btn primary" onclick="exchangeMax()">一键兑换最大</button>
+    </div>
+</div>
+
+<!-- 皮肤兑换 -->
+<div id="skinMenu" class="menu" style="display:none">
+    <h1>皮肤兑换</h1>
+    <div class="gold-display" id="skinGoldDisplay">金币: <span id="skinGold">0</span></div>
+    <button class="back-btn" onclick="showMainMenu()">返回</button>
+    <div class="skin-list" id="skinList"></div>
+</div>
+
+<!-- 道具购买菜单 -->
+<div id="itemMenu" class="menu" style="display:none">
+    <h1>道具购买</h1>
+    <button class="back-btn" onclick="showMainMenu()">返回</button>
+    <div class="gold-display">金币: <span id="itemGold">0</span></div>
+    
+    <div class="item-box">
+        <div class="item-title">消耗金币购买道具</div>
+        <div class="item-row">
+            <div class="item-desc">护盾（抵挡碰撞）</div>
+            <div class="item-price">30金币/个</div>
+            <button class="menu-btn gold" style="padding:6px 12px;font-size:14px" onclick="buyItem('shield')">购买</button>
+        </div>
+        <div class="item-row">
+            <div class="item-desc">双倍得分（10秒×2）</div>
+            <div class="item-price">50金币/个</div>
+            <button class="menu-btn gold" style="padding:6px 12px;font-size:14px" onclick="buyItem('double')">购买</button>
+        </div>
+    </div>
+</div>
+
+<!-- 设置面板 -->
+<div id="settingsPanel">
+    <h3>游戏设置</h3>
+    <div class="setting-item">
+        <span class="setting-label">特效开关</span>
+        <div class="switch" id="effectSwitch" onclick="toggleEffect()"></div>
+    </div>
+    <div class="setting-item">
+        <span class="setting-label">碰撞震动</span>
+        <div class="switch" id="vibrationSwitch" onclick="toggleVibration()"></div>
+    </div>
+    <button class="danger-btn" onclick="confirmReset()">注销所有进度</button>
+    <button class="menu-btn primary" style="margin-top:20px;" onclick="hideSettingsPanel()">返回</button>
+</div>
+
+<!-- 游戏界面 -->
+<div id="gameUI">
+    <div id="score">0</div>
+    <button id="pauseBtn" onclick="showPauseMenu();event.stopPropagation()">🏠</button>
+    <div class="item-use-box">
+        <div id="shieldUseBtn" class="item-use-btn" onclick="useShieldItem();event.stopPropagation()">
+            <div class="item-use-text">护盾</div>
+            <div class="item-use-text" id="shieldNum">0</div>
+        </div>
+        <div id="doubleUseBtn" class="item-use-btn" onclick="useDoubleItem();event.stopPropagation()">
+            <div class="item-use-text">双倍</div>
+            <div class="item-use-text" id="doubleNum">0</div>
+        </div>
+    </div>
+    <div id="game"></div>
+</div>
+
+<!-- 暂停 -->
+<div id="pauseMenu" class="modal">
+    <h2>游戏暂停</h2>
+    <button class="menu-btn primary" onclick="resumeGame()">继续游戏</button>
+    <button class="menu-btn secondary" onclick="restartGame()">重新开始</button>
+    <button class="menu-btn tertiary" onclick="backToMain()">返回主页面</button>
+</div>
+
+<!-- 游戏结束 -->
+<div id="gameOverMenu" class="modal">
+    <h2 style="color:#ff2266">游戏结束</h2>
+    <p>本局得分: <span id="finalScore">0</span></p>
+    <p>累计总得分: <span id="totalScoreShow">0</span></p>
+    <p>当前金币: <span id="currentGoldShow">0</span></p>
+    <button class="menu-btn primary" onclick="restartGame()">重新开始</button>
+    <button class="menu-btn tertiary" onclick="backToMain()">返回主页面</button>
+</div>
+
+<!-- 开发者面板 -->
+<div id="devPanel">
+    <h3>开发者控制台</h3>
+    <input type="number" id="devGoldInput" class="dev-input" placeholder="输入金币数量">
+    <br>
+    <button class="dev-btn" onclick="setDevGold()">确认设置</button>
+</div>
+
+<!-- 提示 -->
+<div id="toast" class="toast"></div>
+
+<script>
+const game = document.getElementById('game');
+const scoreText = document.getElementById('score');
+const pauseMenu = document.getElementById('pauseMenu');
+const gameOverMenu = document.getElementById('gameOverMenu');
+const mainMenu = document.getElementById('mainMenu');
+const difficultyMenu = document.getElementById('difficultyMenu');
+const exchangeMenu = document.getElementById('exchangeMenu');
+const skinMenu = document.getElementById('skinMenu');
+const itemMenu = document.getElementById('itemMenu');
+const gameUI = document.getElementById('gameUI');
+const toast = document.getElementById('toast');
+const devPanel = document.getElementById('devPanel');
+const skinGoldDisplay = document.getElementById('skinGoldDisplay');
+const settingsPanel = document.getElementById('settingsPanel');
+const effectSwitch = document.getElementById('effectSwitch');
+const vibrationSwitch = document.getElementById('vibrationSwitch');
+const shieldUseBtn = document.getElementById('shieldUseBtn');
+const doubleUseBtn = document.getElementById('doubleUseBtn');
+const shieldNum = document.getElementById('shieldNum');
+const doubleNum = document.getElementById('doubleNum');
+const aiChatPanel = document.getElementById('aiChatPanel');
+const chatBox = document.getElementById('chatBox');
+const chatInput = document.getElementById('chatInput');
+
+let w = innerWidth, h = innerHeight;
+let player, score=0, speed=0, rotateSpeed=0, playing=false;
+let obstacles=[], px=w/2, py=h/2, spawnTimer=null, currentDifficulty='normal';
+let activeShield = false;
+let doubleActive = false;
+let doubleTimer = null;
+
+let settings = { effectsEnabled:true, vibrationEnabled:true };
+
+const skins = [
+    {id:1,name:"深海蓝",price:10,color:"#0099ff",color2:"#0ff",owned:true},
+    {id:2,name:"烈焰红",price:20,color:"#ff2266",color2:"#ff8800",owned:false},
+    {id:3,name:"极光紫",price:30,color:"#8844ff",color2:"#cc00ff",owned:false},
+    {id:4,name:"青草绿",price:40,color:"#00ff88",color2:"#00cc66",owned:false},
+    {id:5,name:"黄金耀",price:50,color:"#ffd700",color2:"#ffaa00",owned:false},
+    {id:6,name:"幻彩白",price:60,color:"#ffffff",color2:"#ddddff",owned:false}
+];
+
+let currentSkin = skins.find(s=>s.id===1);
+
+let userData = {
+    gold:0, totalScore:0, ownedSkins:[1], currentSkinId:1,
+    shield:0, double:0
+};
+
+const difficultyConfig = {
+    easy:{initSpeed:4,speedGain:0.08,rotateGain:0.1,spawnInterval:800},
+    normal:{initSpeed:7,speedGain:0.15,rotateGain:0.2,spawnInterval:500},
+    hard:{initSpeed:10,speedGain:0.22,rotateGain:0.35,spawnInterval:350}
+};
+
+function safeNumber(n,d=0){let v=Number(n);return isNaN(v)?d:v}
+
+function updateItemBtnUI(){
+    shieldNum.innerText = userData.shield;
+    doubleNum.innerText = userData.double;
+    shieldUseBtn.className = userData.shield>0 ? "item-use-btn" : "item-use-btn disabled";
+    doubleUseBtn.className = userData.double>0 ? "item-use-btn" : "item-use-btn disabled";
+}
+
+function useShieldItem(){
+    if(userData.shield < 1 || activeShield){
+        showToast(activeShield ? "护盾已生效" : "护盾数量不足");
+        return;
+    }
+    userData.shield--;
+    activeShield = true;
+    saveUserData();
+    updateItemBtnUI();
+    createPlayer();
+    showToast("护盾已激活，抵挡1次碰撞！");
+}
+
+function useDoubleItem(){
+    if(userData.double < 1 || doubleActive){
+        showToast(doubleActive ? "双倍已生效" : "双倍数量不足");
+        return;
+    }
+    userData.double--;
+    doubleActive = true;
+    saveUserData();
+    updateItemBtnUI();
+    showToast("双倍得分开启，10秒×2！");
+    
+    clearTimeout(doubleTimer);
+    doubleTimer = setTimeout(()=>{
+        doubleActive = false;
+        showToast("双倍得分结束");
+    },10000);
+}
+
+// AI对话
+function showAIChat(){
+    hideAll();
+    aiChatPanel.style.display = 'flex';
+    updateAllDataDisplay();
+}
+function hideAIChat(){
+    aiChatPanel.style.display = 'none';
+    showMainMenu();
+}
+
+async function sendChat(){
+    let msg = chatInput.value.trim();
+    if(!msg){ showToast("请输入问题"); return; }
+    if(userData.gold < 5){ showToast("金币不足，需要5金币"); return; }
+    
+    userData.gold -=5;
+    saveUserData();
+    updateAllDataDisplay();
+
+    let userDiv = document.createElement('div');
+    userDiv.className = 'chat-message user-msg';
+    userDiv.innerText = msg;
+    chatBox.appendChild(userDiv);
+    chatInput.value = '';
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try{
+        let res = await fetch("https://api.deepseek.com/v1/chat/completions",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer sk-32ffb4a7802c469ab5c60a44993d95bd"
+            },
+            body:JSON.stringify({
+                model:"deepseek-chat",
+                messages:[{role:"user",content:msg}],
+                temperature:0.7
+            })
+        });
+        let data = await res.json();
+        let aiMsg = data.choices[0].message.content;
+
+        let aiDiv = document.createElement('div');
+        aiDiv.className = 'chat-message ai-msg';
+        aiDiv.innerText = aiMsg;
+        chatBox.appendChild(aiDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }catch(e){
+        showToast("AI请求失败");
+        userData.gold +=5;
+        saveUserData();
+        updateAllDataDisplay();
+    }
+}
+
+function showItemMenu(){
+    hideAll();
+    itemMenu.style.display='flex';
+    updateAllDataDisplay();
+}
+function buyItem(type){
+    let price, name;
+    if(type==='shield'){price=30;name='护盾'}
+    if(type==='double'){price=50;name='双倍得分'}
+    
+    if(userData.gold < price){
+        showToast(`金币不足，需${price}金币`);
+        return;
+    }
+    userData.gold -= price;
+    if(type==='shield') userData.shield++;
+    if(type==='double') userData.double++;
+    saveUserData();
+    updateAllDataDisplay();
+    showToast(`购买${name}成功！`);
+}
+
+function showSettingsPanel(){
+    settingsPanel.style.display='block';
+    effectSwitch.className=settings.effectsEnabled?'switch active':'switch';
+    vibrationSwitch.className=settings.vibrationEnabled?'switch active':'switch';
+}
+function hideSettingsPanel(){settingsPanel.style.display='none'}
+function toggleEffect(){
+    settings.effectsEnabled=!settings.effectsEnabled;
+    effectSwitch.className=settings.effectsEnabled?'switch active':'switch';
+    showToast(`特效已${settings.effectsEnabled?'开启':'关闭'}`);
+}
+function toggleVibration(){
+    settings.vibrationEnabled=!settings.vibrationEnabled;
+    vibrationSwitch.className=settings.vibrationEnabled?'switch active':'switch';
+    showToast(`震动已${settings.vibrationEnabled?'开启':'关闭'}`);
+}
+
+function confirmReset(){
+    if(!confirm('确定注销？所有皮肤、道具、金币清空！')) return;
+    userData = {
+        gold:0, totalScore:0, ownedSkins:[1], currentSkinId:1,
+        shield:0, double:0
+    };
+    skins.forEach(s=>{s.owned = s.id === 1;});
+    currentSkin = skins.find(s=>s.id===1);
+    activeShield = false; doubleActive = false; clearTimeout(doubleTimer);
+    localStorage.removeItem('ballGameSave');
+    updateAllDataDisplay();
+    renderSkinList();
+    showToast('所有进度已重置！');
+    hideSettingsPanel();
+}
+
+skinGoldDisplay.ondblclick=()=>{
+    if(skinMenu.style.display!=='flex') return;
+    let p=prompt("输入开发者密码：");
+    if(p==="33012"){
+        devPanel.style.display='block';
+        document.getElementById('devGoldInput').value=userData.gold;
+        showToast("开发者模式已开启");
+    }else if(p) showToast("密码错误");
+}
+function setDevGold(){
+    let v=safeNumber(document.getElementById('devGoldInput').value);
+    userData.gold=v;
+    saveUserData();
+    updateAllDataDisplay();
+    renderSkinList();
+    updateItemBtnUI();
+    showToast(`金币设为：${v}`);
+    devPanel.style.display='none';
+}
+
+function init(){
+    try{
+        let s=localStorage.getItem('ballGameSave');
+        if(s){
+            let d=JSON.parse(s);
+            userData={
+                gold:safeNumber(d.gold,0),
+                totalScore:safeNumber(d.totalScore,0),
+                ownedSkins:Array.isArray(d.ownedSkins)?d.ownedSkins:[1],
+                currentSkinId:safeNumber(d.currentSkinId,1),
+                shield:safeNumber(d.shield,0),
+                double:safeNumber(d.double,0)
+            };
+            if(!userData.ownedSkins.includes(1)) userData.ownedSkins.push(1);
+            skins.forEach(sk=>sk.owned=userData.ownedSkins.includes(sk.id));
+            let sk=skins.find(x=>x.id===userData.currentSkinId);
+            currentSkin=sk||skins.find(x=>x.id===1);
+        }
+    }catch(e){
+        userData = {gold:0,totalScore:0,ownedSkins:[1],currentSkinId:1,shield:0,double:0};
+        localStorage.removeItem('ballGameSave');
+    }
+    updateAllDataDisplay();
+    renderSkinList();
+    initExchangeInput();
+}
+
+function showToast(t,d=2000){
+    toast.innerText=t;toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'),d);
+}
+
+function updateAllDataDisplay(){
+    let g=safeNumber(userData.gold),s=safeNumber(userData.totalScore);
+    document.querySelectorAll('#mainGold,#diffGold,#exchangeGold,#skinGold,#itemGold,#currentGoldShow').forEach(e=>e.innerText=g);
+    document.querySelectorAll('#mainScore,#diffScore,#exchangeScore,#totalScoreShow').forEach(e=>e.innerText=s);
+    document.getElementById('maxExchange').innerText=Math.floor(s/5);
+    updateItemBtnUI();
+}
+
+function initExchangeInput(){
+    let e=document.getElementById('exchangeNum'),n=document.getElementById('needScore');
+    e.addEventListener('input',()=>{
+        let num=Math.max(1,safeNumber(e.value,1));
+        e.value=num;n.innerText=num*5;
+    });
+}
+
+function exchangeGold(){
+    let num=safeNumber(document.getElementById('exchangeNum').value),need=num*5,s=safeNumber(userData.totalScore);
+    if(num<1)return showToast('输入有效数量');
+    if(need>s)return showToast('得分不足');
+    userData.totalScore=s-need;userData.gold+=num;saveUserData();updateAllDataDisplay();
+    showToast(`获得${num}金币`);
+}
+
+function exchangeMax(){
+    let s=safeNumber(userData.totalScore),max=Math.floor(s/5);
+    if(max<1)return showToast('无可兑换');
+    userData.totalScore-=max*5;userData.gold+=max;saveUserData();updateAllDataDisplay();
+    showToast(`兑换${max}金币`);
+}
+
+function renderSkinList(){
+    let l=document.getElementById('skinList'),g=safeNumber(userData.gold);
+    l.innerHTML='';
+    skins.forEach(sk=>{
+        let act=currentSkin.id===sk.id;
+        let div=document.createElement('div');
+        div.className=`skin-item ${act?'active':''}`;
+        div.innerHTML=`<div class="skin-preview" style="background:radial-gradient(circle,${sk.color2},${sk.color});box-shadow:0 0 15px ${sk.color}"></div><div class="skin-name">${sk.name}</div>`;
+        let btn=document.createElement('button');btn.className='skin-btn';
+        if(sk.owned){
+            btn.innerText=act?'使用中':'使用';
+            btn.style.background=act?'#0ff':'#333';
+            btn.onclick=()=>useSkin(sk);
+        }else{
+            btn.innerText=`${sk.price}金币兑换`;
+            btn.style.background='#ffd700';
+            btn.disabled=g<sk.price;
+            btn.onclick=()=>buySkin(sk);
+        }
+        div.appendChild(btn);l.appendChild(div);
+    });
+}
+
+function buySkin(sk){
+    let g=safeNumber(userData.gold);
+    if(sk.owned)return showToast('已拥有');
+    if(g<sk.price)return showToast(`还差${sk.price-g}金币`);
+    userData.gold=g-sk.price;sk.owned=true;userData.ownedSkins.push(sk.id);
+    saveUserData();updateAllDataDisplay();renderSkinList();showToast(`购买${sk.name}成功`);
+}
+
+function useSkin(sk){
+    if(!sk.owned)return showToast('请先兑换');
+    currentSkin=sk;userData.currentSkinId=sk.id;saveUserData();renderSkinList();showToast(`使用${sk.name}`);
+}
+
+function saveUserData(){localStorage.setItem('ballGameSave',JSON.stringify(userData))}
+
+function showMainMenu(){hideAll();mainMenu.style.display='flex';resetGame();updateAllDataDisplay()}
+function showDifficultyMenu(){hideAll();difficultyMenu.style.display='flex';updateAllDataDisplay()}
+function showExchangeMenu(){hideAll();exchangeMenu.style.display='flex';updateAllDataDisplay()}
+function showSkinMenu(){hideAll();skinMenu.style.display='flex';updateAllDataDisplay();renderSkinList()}
+function showGame(){hideAll();gameUI.style.display='block';updateAllDataDisplay()}
+function showPauseMenu(){playing=false;pauseMenu.style.display='block'}
+function showGameOverMenu(){
+    playing=false;gameOverMenu.style.display='block';
+}
+function hideAll(){
+    mainMenu.style.display=difficultyMenu.style.display=exchangeMenu.style.display=skinMenu.style.display=itemMenu.style.display='none';
+    gameUI.style.display=pauseMenu.style.display=gameOverMenu.style.display=devPanel.style.display=settingsPanel.style.display=aiChatPanel.style.display='none';
+}
+
+// ====================== 终极修复：点道具按钮小球绝对不动 ======================
+window.addEventListener('mousemove',e=>{
+    // 只有在游戏界面、正在玩、且目标不是按钮，才移动小球
+    if(gameUI.style.display === 'block' && playing &&
+       e.target.id !== 'shieldUseBtn' && e.target.id !== 'doubleUseBtn' && e.target.id !== 'pauseBtn'){
+        px = e.x;
+        py = e.y;
+    }
+});
+
+window.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    // 触摸同理：只在空白区域移动
+    if(gameUI.style.display === 'block' && playing){
+        const target = e.target;
+        if(target.id !== 'shieldUseBtn' && target.id !== 'doubleUseBtn' && target.id !== 'pauseBtn'){
+            px = e.touches[0].clientX;
+            py = e.touches[0].clientY;
+        }
+    }
+});
+
+function createTrail(x,y){
+    if(!settings.effectsEnabled)return;
+    let t=document.createElement('div');t.className='trail';
+    t.style.left=x+'px';t.style.top=y+'px';t.style.background=currentSkin.color;
+    t.style.boxShadow=`0 0 10px ${currentSkin.color}`;game.appendChild(t);
+    setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),200)},200);
+}
+
+function createPlayer(){
+    if(player)player.remove();
+    player=document.createElement('div');player.id='player';
+    if(settings.effectsEnabled)player.classList.add('pulse');
+    player.style.background=`radial-gradient(circle,${currentSkin.color2},${currentSkin.color})`;
+    
+    if(activeShield){
+        player.style.boxShadow=`0 0 30px #ffd700,0 0 60px #ffd700`;
+    }else{
+        player.style.boxShadow=settings.effectsEnabled?`0 0 30px ${currentSkin.color},0 0 60px ${currentSkin.color2}`:`0 0 10px ${currentSkin.color}`;
+    }
+    player.style.setProperty('--skin-color',currentSkin.color);
+    player.style.setProperty('--skin-color2',currentSkin.color2);
+    game.appendChild(player);
+}
+
+function spawnObstacle(){
+    if(!playing)return;
+    let o=document.createElement('div');o.className='obstacle';
+    o.style.width=(Math.random()*200+120)+'px';
+    o.style.left=Math.random()*(w-220)+'px';o.style.top='-60px';
+    if(!settings.effectsEnabled)o.style.boxShadow='none';
+    game.appendChild(o);obstacles.push(o);
+}
+
+function update(){
+    if(!playing)return;
+    player.style.left=px+'px';player.style.top=py+'px';
+    if(settings.effectsEnabled)createTrail(px,py);
+    
+    for(let i=0;i<obstacles.length;i++){
+        let o=obstacles[i],y=parseFloat(o.style.top)+speed;
+        o.style.top=y+'px';o.style.transform=`rotate(${rotateSpeed}deg)`;
+        
+        if(y>h){
+            o.remove();obstacles.splice(i,1);i--;
+            score += doubleActive ? 2 : 1;
+            scoreText.innerText=score;
+            speed+=difficultyConfig[currentDifficulty].speedGain;
+            rotateSpeed+=difficultyConfig[currentDifficulty].rotateGain;
+        }
+        
+        let pr=player.getBoundingClientRect(),or=o.getBoundingClientRect();
+        if(pr.right>or.left+8&&pr.left<or.right-8&&pr.bottom>or.top+8&&pr.top<or.bottom-8){
+            if(activeShield){
+                activeShield = false;
+                createPlayer();
+                o.remove();obstacles.splice(i,1);i--;
+                showToast('护盾抵挡了碰撞！');
+                continue;
+            }
+            if(settings.vibrationEnabled){
+                navigator.vibrate&&navigator.vibrate(200);
+                document.body.classList.add('shake');
+                setTimeout(()=>document.body.classList.remove('shake'),400);
+            }
+            gameOver();return;
+        }
+    }
+    requestAnimationFrame(update);
+}
+
+function startGame(d){
+    currentDifficulty=d;let c=difficultyConfig[d];resetGame();showGame();
+    speed=c.initSpeed;rotateSpeed=0;score=0;scoreText.innerText=score;playing=true;
+    createPlayer();spawnTimer=setInterval(spawnObstacle,c.spawnInterval);update();
+}
+function resumeGame(){pauseMenu.style.display='none';playing=true;update()}
+function restartGame(){
+    activeShield = false; doubleActive = false; clearTimeout(doubleTimer);
+    pauseMenu.style.display='none';gameOverMenu.style.display='none';startGame(currentDifficulty);
+}
+function gameOver(){
+    playing=false;clearInterval(spawnTimer);clearTimeout(doubleTimer);
+    userData.totalScore=safeNumber(userData.totalScore+score);saveUserData();updateAllDataDisplay();
+    document.getElementById('finalScore').innerText=score;
+    showGameOverMenu();
+}
+function backToMain(){
+    activeShield = false; doubleActive = false; clearTimeout(doubleTimer);
+    resetGame();showMainMenu();
+}
+function resetGame(){
+    playing=false;clearInterval(spawnTimer);clearTimeout(doubleTimer);
+    obstacles.forEach(o=>o.remove());document.querySelectorAll('.trail').forEach(t=>t.remove());
+    obstacles=[];score=0;speed=0;rotateSpeed=0;scoreText.innerText=0;
+    activeShield = false; doubleActive = false;
+}
+
+window.addEventListener('resize',()=>{w=innerWidth;h=innerHeight});
+init();
+</script>
+</body>
+</html>
