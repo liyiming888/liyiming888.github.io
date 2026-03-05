@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>网课会议系统 | 可直接GitHub发布</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1677ff',
+            success: '#00b42a',
+            warning: '#ff7d00',
+            danger: '#f53f3f',
+            dark: '#1f2937',
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .scrollbar-hide { scrollbar-width: none; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .video-card { aspect-ratio: 16/9; }
+      .barrage { animation: barrage 8s linear forwards; }
+      @keyframes barrage {
+        from { transform: translateX(100vw); }
+        to { transform: translateX(-100%); }
+      }
+      .side-mask { backdrop-filter: blur(2px); }
+      .content-active { border-bottom: 2px solid #1677ff; color: #1677ff; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 m-0 p-0 min-h-screen">
+  <!-- 全局提示框 -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded bg-black/75 text-white z-50 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+
+  <!-- 首页 -->
+  <div id="home" class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold text-dark mb-2">网课会议系统</h1>
+      <p class="text-gray-500">创建/加入会议 · 密钥入会 · 网课直播</p>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+      <button id="createBtn" class="flex-1 bg-primary hover:bg-primary/90 text-white py-4 px-6 rounded-xl text-lg font-medium transition">创建会议</button>
+      <button id="joinBtn" class="flex-1 bg-white border-2 border-primary text-primary hover:bg-primary/5 py-4 px-6 rounded-xl text-lg font-medium transition">加入会议</button>
+    </div>
+  </div>
+
+  <!-- 加入会议弹窗 -->
+  <div id="joinModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4">加入会议</h3>
+      <input type="text" id="joinKey" placeholder="请输入12位会议密钥（区分大小写）" class="w-full border border-gray-300 rounded-lg px-4 py-3 mb-4 outline-none focus:border-primary text-lg">
+      <div class="flex gap-3">
+        <button id="cancelJoin" class="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-50">取消</button>
+        <button id="confirmJoin" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">加入会议</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 会议主界面 -->
+  <div id="room" class="hidden flex flex-col h-screen bg-dark text-white">
+    <!-- 顶部信息栏 -->
+    <div class="flex items-center justify-between p-3 border-b border-gray-700 flex-wrap gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div>
+          <p class="m-0 text-sm text-gray-300">会议密钥</p>
+          <p id="roomKey" class="m-0 text-lg font-bold text-primary tracking-wide"></p>
+        </div>
+        <button id="copyKey" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">复制</button>
+        <div id="qrcodeContainer" class="w-16 h-16 bg-white rounded p-1"></div>
+        <button id="allMuteBtn" class="bg-warning/80 hover:bg-warning px-2 py-1 rounded text-sm hidden">全员静音</button>
+        <span id="presenterTag" class="text-xs bg-success/20 text-success px-2 py-1 rounded-full font-medium hidden">当前主讲人</span>
+      </div>
+      <div>
+        <span id="userRole" class="text-success font-medium"></span>
+        <button id="leaveBtn" class="ml-3 bg-danger hover:bg-danger/90 px-4 py-1.5 rounded text-sm">离开会议</button>
+      </div>
+    </div>
+
+    <!-- 中间主体区域 -->
+    <div class="flex flex-1 overflow-hidden relative">
+      <!-- 中央主屏幕区域 -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- 模式切换栏（仅当前主讲人可见） -->
+        <div id="modeTab" class="flex border-b border-gray-700 px-3 gap-6 hidden">
+          <button id="videoMode" class="py-2 px-1 text-sm font-medium content-active">视频会议</button>
+          <button id="whiteboardMode" class="py-2 px-1 text-sm font-medium text-gray-400 hover:text-white transition">电子白板</button>
+          <button id="fileMode" class="py-2 px-1 text-sm font-medium text-gray-400 hover:text-white transition">课件展示</button>
+        </div>
+
+        <!-- 1. 视频会议内容区 -->
+        <div id="videoContent" class="flex-1 p-3 overflow-auto">
+          <div id="videos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+
+        <!-- 2. 电子白板内容区（中央全屏） -->
+        <div id="whiteboardContent" class="flex-1 p-3 overflow-auto hidden">
+          <div class="w-full h-full bg-white rounded-lg overflow-hidden relative">
+            <canvas id="mainWhiteboard" class="w-full h-full"></canvas>
+            <!-- 白板控制栏（仅当前主讲人可见） -->
+            <div id="boardControl" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 px-4 py-2 rounded-full hidden">
+              <button id="clearMainBoard" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600">🗑️</button>
+              <input type="color" id="boardColor" class="w-8 h-8 rounded-full cursor-pointer" value="#000000">
+              <input type="range" id="boardWidth" min="1" max="10" value="2" class="w-20">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 课件展示内容区（中央全屏） -->
+        <div id="fileContent" class="flex-1 p-3 overflow-auto hidden">
+          <div class="w-full h-full flex flex-col items-center justify-center bg-gray-800 rounded-lg overflow-hidden">
+            <div id="filePreviewBox" class="w-full h-full flex items-center justify-center">
+              <p class="text-gray-400 text-lg">暂无共享课件</p>
+            </div>
+            <!-- 课件控制栏（仅当前主讲人可见） -->
+            <div id="fileControl" class="w-full p-3 border-t border-gray-700 hidden">
+              <div class="flex gap-3 items-center flex-wrap">
+                <input type="file" id="mainUploadFile" class="hidden" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx">
+                <label for="mainUploadFile" class="bg-primary px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-primary/90">上传课件</label>
+                <span id="currentFileName" class="text-gray-300 text-sm">未选择文件</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧侧边栏（参会者/聊天） -->
+      <div class="w-72 border-l border-gray-700 flex flex-col bg-gray-900 hidden md:flex">
+        <!-- 参会者列表 -->
+        <div class="p-3 border-b border-gray-700 flex-1 overflow-y-auto scrollbar-hide">
+          <h3 class="text-sm font-bold mb-2">参会者 <span id="userCount">0</span></h3>
+          <div id="userList" class="space-y-1.5"></div>
+        </div>
+
+        <!-- 聊天区 -->
+        <div class="p-3 border-t border-gray-700 h-48 flex flex-col">
+          <h3 class="text-sm font-bold mb-1">聊天</h3>
+          <div id="chatBox" class="flex-1 bg-gray-800 rounded p-2 text-sm overflow-y-auto scrollbar-hide mb-2"></div>
+          <div class="flex gap-1">
+            <input id="chatInput" class="flex-1 px-2 py-1.5 text-sm rounded border-none outline-none bg-gray-700" placeholder="发送消息...">
+            <button id="sendChat" class="px-3 py-1.5 bg-primary text-sm rounded">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div class="flex justify-center gap-3 p-3 border-t border-gray-700 flex-wrap">
+      <button id="micBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl transition">🎤</button>
+      <button id="cameraBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl transition">📷</button>
+      <button id="shareBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl transition">🖥️</button>
+      <button id="recordBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl transition">⏺️</button>
+      <button id="handBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl transition">✋</button>
+      <button id="sideToggle" class="md:hidden w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl transition">☰</button>
+    </div>
+  </div>
+
+  <!-- 移动端侧边栏遮罩+面板 -->
+  <div id="mobileMask" class="fixed inset-0 bg-black/40 side-mask z-40 hidden pointer-events-none"></div>
+  <div id="mobileSide" class="fixed right-0 top-0 bottom-0 w-72 bg-gray-900 z-50 transform translate-x-full transition-transform duration-300 overflow-y-auto scrollbar-hide">
+    <!-- 超大关闭按钮 -->
+    <button id="closeMobile" class="w-full bg-danger hover:bg-danger/90 text-white py-3 font-bold sticky top-0 z-10">关闭面板</button>
+    
+    <div class="p-3">
+      <!-- 参会者列表 -->
+      <div class="mb-4">
+        <h3 class="text-sm font-bold mb-2">参会者 <span id="mobileCount">0</span></h3>
+        <div id="mobileList" class="space-y-1.5"></div>
+      </div>
+
+      <!-- 聊天区 -->
+      <div>
+        <h3 class="text-sm font-bold mb-2">聊天</h3>
+        <div id="mobileChat" class="bg-gray-800 h-40 rounded p-2 text-sm mb-2 overflow-y-auto"></div>
+        <input id="mobileInput" class="w-full px-2 py-1.5 text-sm rounded bg-gray-700 mb-2 outline-none" placeholder="发送消息...">
+        <button id="mobileSend" class="w-full bg-primary text-sm py-1.5 rounded">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹幕容器 -->
+  <div id="barrageContainer" class="fixed inset-0 pointer-events-none z-30"></div>
+
+  <script>
+    // 全局变量
+    let peer = null;
+    let localPeerId = "";
+    let roomKey = "";
+    let isHost = false;
+    let localStream = null;
+    let shareStream = null;
+    let mediaRecorder = null;
+    let isRecording = false;
+    let isMiced = false;
+    let isCamered = false;
+    let isHandUp = false;
+    let isSharing = false;
+    let currentMode = "video"; // 当前模式：video/whiteboard/file
+    let currentPresenter = ""; // 当前主讲人ID，默认主持人
+    
+    const connections = new Map(); // 所有peer连接
+    const userList = new Map(); // 参会者信息
+    const videosEl = document.getElementById("videos");
+    const chatBox = document.getElementById("chatBox");
+    const mobileSide = document.getElementById("mobileSide");
+    const mobileMask = document.getElementById("mobileMask");
+
+    // ========== 基础工具函数 ==========
+    // 提示框
+    function showToast(msg, type = "normal") {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "fixed top-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded text-white z-50 opacity-100 transition-opacity duration-300 pointer-events-none";
+      if(type === "success") t.classList.add("bg-success/90");
+      else if(type === "error") t.classList.add("bg-danger/90");
+      else t.classList.add("bg-black/75");
+      setTimeout(() => t.classList.replace("opacity-100", "opacity-0"), 2500);
+    }
+
+    // 生成12位大小写+数字密钥
+    function generateRoomKey() {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let res = "";
+      for (let i = 0; i < 12; i++) res += chars[Math.floor(Math.random() * chars.length)];
+      return res;
+    }
+
+    // 广播消息给所有连接
+    function broadcast(data) {
+      connections.forEach(conn => {
+        if(conn.open) conn.send(data);
+      });
+    }
+
+    // ========== 主讲权限核心控制 ==========
+    // 检查是否是当前主讲人
+    function isCurrentPresenter() {
+      return localPeerId === currentPresenter;
+    }
+
+    // 更新主讲人UI权限
+    function updatePresenterUI() {
+      const isPresenter = isCurrentPresenter();
+      // 模式切换栏显示/隐藏
+      document.getElementById("modeTab").className = isPresenter 
+        ? "flex border-b border-gray-700 px-3 gap-6" 
+        : "hidden";
+      // 白板控制栏显示/隐藏
+      document.getElementById("boardControl").className = isPresenter
+        ? "absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 px-4 py-2 rounded-full"
+        : "hidden";
+      // 课件控制栏显示/隐藏
+      document.getElementById("fileControl").className = isPresenter
+        ? "w-full p-3 border-t border-gray-700"
+        : "hidden";
+      // 主讲人标签显示/隐藏
+      document.getElementById("presenterTag").className = isPresenter
+        ? "text-xs bg-success/20 text-success px-2 py-1 rounded-full font-medium"
+        : "hidden";
+    }
+
+    // 切换主讲人（仅主持人可调用）
+    function switchPresenter(targetPeerId) {
+      if(!isHost) return;
+      currentPresenter = targetPeerId;
+      // 更新用户列表里的主讲人状态
+      userList.forEach((info, id) => {
+        info.isPresenter = id === currentPresenter;
+      });
+      // 广播给所有人
+      broadcast({ type: "switchPresenter", presenterId: targetPresenter, list: Object.fromEntries(userList) });
+      // 更新自己的UI
+      updatePresenterUI();
+      updateUserList();
+      // 提示
+      const targetName = userList.get(targetPeerId)?.name || "主持人";
+      showToast(`已将主讲权限授予${targetName}`, "success");
+    }
+
+    // 收回主讲权限（仅主持人可调用）
+    function takeBackPresenter() {
+      if(!isHost) return;
+      switchPresenter(localPeerId);
+      showToast("已收回主讲权限", "success");
+    }
+
+    // ========== 模式切换核心逻辑（已修复同步问题） ==========
+    // 执行模式切换（无权限校验，仅执行画面切换）
+    function execSwitchMode(mode) {
+      // 重置所有标签样式
+      document.querySelectorAll("#modeTab button").forEach(btn => {
+        btn.classList.remove("content-active");
+        btn.classList.add("text-gray-400");
+      });
+
+      // 隐藏所有内容区
+      document.getElementById("videoContent").classList.add("hidden");
+      document.getElementById("whiteboardContent").classList.add("hidden");
+      document.getElementById("fileContent").classList.add("hidden");
+
+      // 显示对应内容区
+      switch(mode) {
+        case "video":
+          document.getElementById("videoMode").classList.add("content-active");
+          document.getElementById("videoContent").classList.remove("hidden");
+          break;
+        case "whiteboard":
+          document.getElementById("whiteboardMode").classList.add("content-active");
+          document.getElementById("whiteboardContent").classList.remove("hidden");
+          initMainBoardSize();
+          break;
+        case "file":
+          document.getElementById("fileMode").classList.add("content-active");
+          document.getElementById("fileContent").classList.remove("hidden");
+          break;
+      }
+
+      currentMode = mode;
+    }
+
+    // 主动切换模式（仅主讲人可调用，带权限校验）
+    function activeSwitchMode(mode) {
+      if(!isCurrentPresenter()) {
+        showToast("仅当前主讲人可切换展示模式", "error");
+        return;
+      }
+      // 执行切换
+      execSwitchMode(mode);
+      // 同步给所有参会者
+      broadcast({ type: "switchMode", mode: mode });
+    }
+
+    // ========== 视频画面管理 ==========
+    // 添加视频画面
+    function addVideo(peerId, stream, label, isHostTag = false, isScreenShare = false) {
+      const videoId = isScreenShare ? `screen-${peerId}` : `v-${peerId}`;
+      if (document.getElementById(videoId)) {
+        document.getElementById(videoId).querySelector("video").srcObject = stream;
+        return;
+      }
+
+      const card = document.createElement("div");
+      // 屏幕共享占满整行，优先级最高
+      card.className = isScreenShare 
+        ? "bg-gray-800 rounded-lg overflow-hidden relative col-span-full video-card" 
+        : "bg-gray-800 rounded-lg overflow-hidden relative video-card";
+      card.id = videoId;
+
+      const video = document.createElement("video");
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = peerId === localPeerId && !isScreenShare;
+      video.srcObject = stream;
+      video.className = "w-full h-full object-cover";
+
+      const nameTag = document.createElement("div");
+      nameTag.className = "absolute bottom-3 left-3 bg-black/60 px-3 py-1 rounded text-sm font-medium";
+      nameTag.textContent = label + (isHostTag ? " (主持人)" : "") + (isScreenShare ? " - 屏幕共享" : "");
+
+      card.appendChild(video);
+      card.appendChild(nameTag);
+      videosEl.appendChild(card);
+
+      // 有屏幕共享时，自动切换到视频模式
+      if(isScreenShare && isCurrentPresenter()) {
+        activeSwitchMode("video");
+      }
+    }
+
+    // 移除视频画面
+    function removeVideo(peerId, isScreenShare = false) {
+      const videoId = isScreenShare ? `screen-${peerId}` : `v-${peerId}`;
+      const el = document.getElementById(videoId);
+      if (el) el.remove();
+    }
+
+    // ========== 参会者列表管理 ==========
+    // 更新参会者列表
+    function updateUserList() {
+      const listEl = document.getElementById("userList");
+      const mobileList = document.getElementById("mobileList");
+      listEl.innerHTML = "";
+      mobileList.innerHTML = "";
+      
+      const count = userList.size;
+      document.getElementById("userCount").textContent = count;
+      document.getElementById("mobileCount").textContent = count;
+
+      userList.forEach((info, id) => {
+        const item = document.createElement("div");
+        item.className = "flex justify-between items-center bg-gray-800 p-2 rounded text-sm flex-wrap gap-1";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = info.name + (info.hand ? " ✋" : "") + (info.isPresenter ? " 👨‍🏫" : "");
+        if (info.host) nameSpan.className = "text-primary font-bold";
+        if (info.isPresenter) nameSpan.className = "text-success font-bold";
+
+        const btns = document.createElement("div");
+        btns.className = "flex gap-1 flex-wrap";
+
+        if (isHost && id !== localPeerId) {
+          // 麦克风控制
+          const micBtn = document.createElement("button");
+          micBtn.textContent = info.mic ? "禁麦" : "开麦";
+          micBtn.className = "px-2 py-0.5 bg-primary/80 rounded text-xs";
+          micBtn.onclick = () => sendControl(id, "mic", !info.mic);
+
+          // 摄像头控制
+          const camBtn = document.createElement("button");
+          camBtn.textContent = info.cam ? "禁画" : "开画";
+          camBtn.className = "px-2 py-0.5 bg-warning/80 rounded text-xs";
+          camBtn.onclick = () => sendControl(id, "cam", !info.cam);
+
+          // 主讲权限控制
+          const presenterBtn = document.createElement("button");
+          if(info.isPresenter) {
+            presenterBtn.textContent = "收回权限";
+            presenterBtn.className = "px-2 py-0.5 bg-danger/80 rounded text-xs";
+            presenterBtn.onclick = () => takeBackPresenter();
+          } else {
+            presenterBtn.textContent = "设为主讲";
+            presenterBtn.className = "px-2 py-0.5 bg-success/80 rounded text-xs";
+            presenterBtn.onclick = () => switchPresenter(id);
+          }
+
+          // 踢出按钮
+          const kickBtn = document.createElement("button");
+          kickBtn.textContent = "踢出";
+          kickBtn.className = "px-2 py-0.5 bg-danger/80 rounded text-xs";
+          kickBtn.onclick = () => sendControl(id, "kick", true);
+
+          btns.append(micBtn, camBtn, presenterBtn, kickBtn);
+        }
+
+        item.append(nameSpan, btns);
+        listEl.appendChild(item);
+        mobileList.appendChild(item.cloneNode(true));
+      });
+    }
+
+    // 更新个人状态并同步
+    function updateMyInfo() {
+      userList.set(localPeerId, {
+        name: isHost ? "主持人" : "参会者",
+        host: isHost,
+        mic: isMiced,
+        cam: isCamered,
+        hand: isHandUp,
+        isPresenter: isCurrentPresenter()
+      });
+      updateUserList();
+      broadcast({ type: "info", list: Object.fromEntries(userList) });
+    }
+
+    // ========== 主持人控制功能 ==========
+    // 发送控制指令
+    function sendControl(toId, cmd, val) {
+      broadcast({ type: "control", target: toId, cmd: cmd, val: val });
+    }
+
+    // 全员静音
+    function allMute() {
+      userList.forEach((info, id) => {
+        if(!info.host) sendControl(id, "mic", false);
+      });
+      showToast("已全员静音", "success");
+    }
+
+    // ========== 聊天&弹幕功能 ==========
+    // 发送聊天
+    function sendChat() {
+      const text = (document.getElementById("chatInput").value || document.getElementById("mobileInput").value).trim();
+      if (!text || !roomKey) return;
+
+      const data = {
+        type: "chat",
+        name: isHost ? "主持人" : "参会者",
+        text: text,
+      };
+      
+      broadcast(data);
+      addChat(data.name, data.text);
+      addBarrage(data.text);
+      
+      document.getElementById("chatInput").value = "";
+      document.getElementById("mobileInput").value = "";
+    }
+
+    // 添加聊天记录
+    function addChat(name, text) {
+      const div = document.createElement("div");
+      div.className = "mb-1.5 break-words";
+      div.innerHTML = `<span class="${name === "主持人" ? "text-primary font-bold" : "text-gray-300"}">${name}：</span>${text}`;
+      chatBox.appendChild(div);
+      document.getElementById("mobileChat").appendChild(div.cloneNode(true));
+      chatBox.scrollTop = chatBox.scrollHeight;
+      document.getElementById("mobileChat").scrollTop = document.getElementById("mobileChat").scrollHeight;
+    }
+
+    // 添加弹幕
+    function addBarrage(text) {
+      const bar = document.createElement("div");
+      bar.className = "barrage absolute text-white text-base px-3 py-1 bg-black/60 rounded-full whitespace-nowrap";
+      bar.textContent = text;
+      bar.style.top = `${Math.random() * 75 + 10}%`;
+      document.getElementById("barrageContainer").appendChild(bar);
+      setTimeout(() => bar.remove(), 8000);
+    }
+
+    // ========== 中央大屏白板功能 ==========
+    let mainBoardCtx = null;
+    let isDrawing = false;
+
+    // 初始化白板尺寸
+    function initMainBoardSize() {
+      const canvas = document.getElementById("mainWhiteboard");
+      const container = canvas.parentElement;
+      canvas.width = container.offsetWidth;
+      canvas.height = container.offsetHeight;
+      if(!mainBoardCtx) mainBoardCtx = canvas.getContext("2d");
+      mainBoardCtx.lineCap = "round";
+      mainBoardCtx.lineJoin = "round";
+    }
+
+    // 初始化白板事件
+    function initMainBoard() {
+      const canvas = document.getElementById("mainWhiteboard");
+      mainBoardCtx = canvas.getContext("2d");
+      
+      // 绘制开始
+      function startDraw(e) {
+        if(!isCurrentPresenter()) return; // 仅主讲人可绘制
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        mainBoardCtx.beginPath();
+        mainBoardCtx.moveTo(x, y);
+        // 同步画笔设置
+        mainBoardCtx.strokeStyle = document.getElementById("boardColor").value;
+        mainBoardCtx.lineWidth = document.getElementById("boardWidth").value;
+      }
+
+      // 绘制中
+      function draw(e) {
+        if (!isDrawing || !isCurrentPresenter()) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        mainBoardCtx.lineTo(x, y);
+        mainBoardCtx.stroke();
+        // 同步绘制给所有参会者
+        broadcast({ 
+          type: "boardDraw", 
+          x: x, 
+          y: y, 
+          isEnd: false,
+          color: mainBoardCtx.strokeStyle,
+          width: mainBoardCtx.lineWidth
+        });
+      }
+
+      // 绘制结束
+      function endDraw() {
+        if (!isDrawing) return;
+        isDrawing = false;
+        mainBoardCtx.closePath();
+        broadcast({ type: "boardDraw", isEnd: true });
+      }
+
+      // 绑定事件
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mousemove", draw);
+      canvas.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("mouseleave", endDraw);
+      
+      // 移动端触摸事件
+      canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        startDraw(e.touches[0]);
+      });
+      canvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        draw(e.touches[0]);
+      });
+      canvas.addEventListener("touchend", endDraw);
+
+      // 清空白板
+      document.getElementById("clearMainBoard").onclick = () => {
+        if(!isCurrentPresenter()) {
+          showToast("仅当前主讲人可清空白板", "error");
+          return;
+        }
+        clearMainBoard();
+        broadcast({ type: "boardClear" });
+      };
+
+      // 窗口大小变化时重置白板尺寸
+      window.addEventListener("resize", initMainBoardSize);
+    }
+
+    // 清空白板
+    function clearMainBoard() {
+      const canvas = document.getElementById("mainWhiteboard");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // 同步绘制
+    function syncBoardDraw(data) {
+      const canvas = document.getElementById("mainWhiteboard");
+      const ctx = canvas.getContext("2d");
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if(data.isEnd) {
+        ctx.closePath();
+      } else {
+        ctx.lineTo(data.x, data.y);
+        ctx.stroke();
+      }
+    }
+
+    // ========== 中央大屏课件展示功能 ==========
+    function initFileUpload() {
+      const fileInput = document.getElementById("mainUploadFile");
+      const previewBox = document.getElementById("filePreviewBox");
+      const fileNameEl = document.getElementById("currentFileName");
+
+      fileInput.onchange = (e) => {
+        if(!isCurrentPresenter()) {
+          showToast("仅当前主讲人可上传课件", "error");
+          return;
+        }
+        if (e.target.files.length === 0) return;
+
+        const file = e.target.files[0];
+        fileNameEl.textContent = file.name;
+        previewBox.innerHTML = "";
+
+        // 图片文件直接渲染
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = document.createElement("img");
+            img.src = event.target.result;
+            img.className = "max-w-full max-h-full object-contain";
+            previewBox.appendChild(img);
+            // 同步给所有参会者
+            broadcast({ type: "fileShow", fileName: file.name, fileType: "image", fileData: event.target.result });
+          };
+          reader.readAsDataURL(file);
+        } 
+        // 其他文件显示下载链接
+        else {
+          const url = URL.createObjectURL(file);
+          const div = document.createElement("div");
+          div.className = "text-center";
+          div.innerHTML = `
+            <p class="text-white text-lg mb-3">${file.name}</p>
+            <a href="${url}" download="${file.name}" class="bg-primary px-4 py-2 rounded-lg text-white inline-block">下载查看课件</a>
+          `;
+          previewBox.appendChild(div);
+          // 同步给所有参会者
+          broadcast({ type: "fileShow", fileName: file.name, fileType: "file", fileUrl: url });
+        }
+
+        showToast(`课件已上传：${file.name}`, "success");
+        // 自动切换到课件模式
+        activeSwitchMode("file");
+      };
+    }
+
+    // 同步课件展示
+    function syncFileShow(data) {
+      const previewBox = document.getElementById("filePreviewBox");
+      previewBox.innerHTML = "";
+
+      if(data.fileType === "image") {
+        const img = document.createElement("img");
+        img.src = data.fileData;
+        img.className = "max-w-full max-h-full object-contain";
+        previewBox.appendChild(img);
+      } else {
+        const div = document.createElement("div");
+        div.className = "text-center";
+        div.innerHTML = `
+          <p class="text-white text-lg mb-3">${data.fileName}</p>
+          <a href="${data.fileUrl}" download="${data.fileName}" class="bg-primary px-4 py-2 rounded-lg text-white inline-block">下载查看课件</a>
+        `;
+        previewBox.appendChild(div);
+      }
+
+      // 自动切换到课件模式
+      execSwitchMode("file");
+      showToast(`主讲人共享了课件：${data.fileName}`, "success");
+    }
+
+    // ========== 核心媒体功能 ==========
+    // 麦克风开关
+    async function toggleMic() {
+      try {
+        // 无流时初始化流
+        if (!localStream) {
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isCamered });
+          // 把流同步给所有已连接的peer
+          connections.forEach(conn => {
+            const call = peer.call(conn.peer, localStream);
+            call.on("stream", remoteStream => {
+              addVideo(conn.peer, remoteStream, userList.get(conn.peer)?.name || "参会者", userList.get(conn.peer)?.host);
+            });
+          });
+        }
+
+        const audioTrack = localStream.getAudioTracks()[0];
+        audioTrack.enabled = !audioTrack.enabled;
+        isMiced = audioTrack.enabled;
+        
+        // 更新UI
+        document.getElementById("micBtn").style.background = isMiced ? "#00b42a" : "#374151";
+        showToast(isMiced ? "麦克风已开启" : "麦克风已关闭", isMiced ? "success" : "normal");
+        updateMyInfo();
+      } catch (e) {
+        showToast("麦克风权限被拒绝，请检查浏览器设置", "error");
+        console.error(e);
+      }
+    }
+
+    // 摄像头开关
+    async function toggleCamera() {
+      try {
+        if (!localStream) {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: isMiced });
+          // 同步流给所有peer
+          connections.forEach(conn => {
+            const call = peer.call(conn.peer, localStream);
+            call.on("stream", remoteStream => {
+              addVideo(conn.peer, remoteStream, userList.get(conn.peer)?.name || "参会者", userList.get(conn.peer)?.host);
+            });
+          });
+        }
+
+        const videoTrack = localStream.getVideoTracks()[0];
+        videoTrack.enabled = !videoTrack.enabled;
+        isCamered = videoTrack.enabled;
+        
+        // 更新UI和画面
+        document.getElementById("cameraBtn").style.background = isCamered ? "#00b42a" : "#374151";
+        if (isCamered) addVideo(localPeerId, localStream, "我", isHost);
+        else removeVideo(localPeerId);
+        
+        showToast(isCamered ? "摄像头已开启" : "摄像头已关闭", isCamered ? "success" : "normal");
+        updateMyInfo();
+      } catch (e) {
+        showToast("摄像头权限被拒绝，请检查浏览器设置", "error");
+        console.error(e);
+      }
+    }
+
+    // 屏幕共享开关
+    async function toggleShare() {
+      try {
+        if (!isSharing) {
+          // 获取屏幕共享流
+          shareStream = await navigator.mediaDevices.getDisplayMedia({ 
+            video: { width: 1920, height: 1080 }, 
+            audio: true 
+          });
+          isSharing = true;
+          
+          // 本地显示共享画面（整行大屏）
+          addVideo(localPeerId, shareStream, "我", isHost, true);
+          document.getElementById("shareBtn").style.background = "#00b42a";
+          
+          // 给所有参会者发送共享流
+          connections.forEach(conn => {
+            const call = peer.call(conn.peer, shareStream, { metadata: { type: "screen" } });
+          });
+
+          // 监听用户停止共享
+          shareStream.getVideoTracks()[0].onended = () => {
+            stopShare();
+          };
+          
+          showToast("屏幕共享已开启，所有参会者可查看", "success");
+        } else {
+          stopShare();
+        }
+      } catch (e) {
+        showToast("屏幕共享失败，请检查权限", "error");
+        console.error(e);
+      }
+    }
+
+    // 停止屏幕共享
+    function stopShare() {
+      if (shareStream) {
+        shareStream.getTracks().forEach(track => track.stop());
+        shareStream = null;
+      }
+      isSharing = false;
+      removeVideo(localPeerId, true);
+      document.getElementById("shareBtn").style.background = "#374151";
+      // 通知所有参会者停止共享
+      broadcast({ type: "stopShare" });
+      showToast("屏幕共享已关闭");
+    }
+
+    // 会议录制开关
+    function toggleRecord() {
+      if (!localStream && !shareStream) {
+        showToast("请先开启摄像头/麦克风/屏幕共享", "error");
+        return;
+      }
+
+      if (!isRecording) {
+        // 合并音视频流
+        const recordStream = new MediaStream();
+        if (localStream) localStream.getTracks().forEach(track => recordStream.addTrack(track));
+        if (shareStream) shareStream.getTracks().forEach(track => recordStream.addTrack(track));
+
+        mediaRecorder = new MediaRecorder(recordStream, { mimeType: "video/webm;codecs=vp9" });
+        const chunks = [];
+        
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `会议录制_${new Date().toLocaleString().replace(/[/:\s]/g, "-")}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        document.getElementById("recordBtn").style.background = "#f53f3f";
+        showToast("开始录制会议", "success");
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.getElementById("recordBtn").style.background = "#374151";
+        showToast("录制完成，已自动下载", "success");
+      }
+    }
+
+    // 举手开关
+    function toggleHand() {
+      isHandUp = !isHandUp;
+      document.getElementById("handBtn").style.background = isHandUp ? "#ff7d00" : "#374151";
+      showToast(isHandUp ? "已举手" : "已取消举手", isHandUp ? "success" : "normal");
+      updateMyInfo();
+    }
+
+    // ========== 会议核心逻辑 ==========
+    // 创建会议（主持人）
+    async function createRoom() {
+      isHost = true;
+      roomKey = generateRoomKey();
+      
+      // 更新UI
+      document.getElementById("roomKey").textContent = roomKey;
+      document.getElementById("userRole").textContent = "主持人";
+      document.getElementById("allMuteBtn").classList.remove("hidden");
+      QRCode.toCanvas(document.getElementById("qrcodeContainer"), roomKey, { width: 64, margin: 1 });
+
+      // 初始化白板
+      initMainBoard();
+      // 初始化课件上传
+      initFileUpload();
+
+      // 初始化Peer
+      peer = new Peer(roomKey);
+      
+      // Peer初始化成功
+      peer.on("open", (id) => {
+        localPeerId = id;
+        currentPresenter = id; // 默认主持人是主讲人
+        userList.set(id, { 
+          name: "主持人", 
+          host: true, 
+          mic: false, 
+          cam: false, 
+          hand: false,
+          isPresenter: true
+        });
+        // 更新主讲人UI
+        updatePresenterUI();
+        updateUserList();
+        
+        // 切换页面
+        document.getElementById("home").classList.add("hidden");
+        document.getElementById("room").classList.remove("hidden");
+        showToast("会议创建成功！", "success");
+      });
+
+      // 监听参会者连接
+      peer.on("connection", (conn) => {
+        conn.on("open", () => {
+          connections.set(conn.peer, conn);
+          
+          // 监听消息
+          conn.on("data", (data) => {
+            handleMessage(data, conn.peer);
+          });
+
+          // 监听连接关闭
+          conn.on("close", () => {
+            userDelete(conn.peer);
+          });
+
+          // 监听连接错误
+          conn.on("error", () => {
+            userDelete(conn.peer);
+          });
+        });
+      });
+
+      // 监听参会者来电（音视频/屏幕共享）
+      peer.on("call", (call) => {
+        // 应答通话
+        if (call.metadata?.type === "screen") {
+          call.answer();
+        } else if (localStream) {
+          call.answer(localStream);
+        } else {
+          call.answer();
+        }
+        
+        // 接收对方的流
+        call.on("stream", (remoteStream) => {
+          const isScreen = call.metadata?.type === "screen";
+          addVideo(call.peer, remoteStream, userList.get(call.peer)?.name || "参会者", userList.get(call.peer)?.host, isScreen);
+        });
+
+        // 通话关闭
+        call.on("close", () => {
+          removeVideo(call.peer);
+          removeVideo(call.peer, true);
+        });
+      });
+
+      // Peer错误处理
+      peer.on("error", (err) => {
+        console.error("Peer错误", err);
+        showToast("会议创建失败，请重试", "error");
+        leaveRoom();
+      });
+    }
+
+    // 加入会议（参会者）
+    async function joinRoom(inputKey) {
+      const key = inputKey.trim();
+      if (key.length !== 12) {
+        showToast("请输入正确的12位会议密钥", "error");
+        return;
+      }
+
+      roomKey = key;
+      isHost = false;
+      
+      // 更新UI
+      document.getElementById("roomKey").textContent = roomKey;
+      document.getElementById("userRole").textContent = "参会者";
+      QRCode.toCanvas(document.getElementById("qrcodeContainer"), roomKey, { width: 64, margin: 1 });
+
+      // 初始化白板
+      initMainBoard();
+
+      // 初始化Peer
+      peer = new Peer();
+      
+      // Peer初始化成功
+      peer.on("open", (id) => {
+        localPeerId = id;
+        const conn = peer.connect(roomKey);
+        
+        // 连接成功
+        conn.on("open", () => {
+          connections.set(roomKey, conn);
+          // 发送加入请求
+          conn.send({ type: "join", peerId: id, name: "参会者" });
+          
+          // 切换页面
+          document.getElementById("joinModal").classList.add("hidden");
+          document.getElementById("home").classList.add("hidden");
+          document.getElementById("room").classList.remove("hidden");
+          showToast("成功加入会议！", "success");
+        });
+
+        // 监听消息
+        conn.on("data", (data) => {
+          handleMessage(data, roomKey);
+        });
+
+        // 连接关闭
+        conn.on("close", () => {
+          showToast("会议已结束，主持人已关闭会议", "error");
+          leaveRoom();
+        });
+
+        // 连接错误
+        conn.on("error", () => {
+          showToast("密钥错误或会议不存在，无法入会", "error");
+          leaveRoom();
+        });
+      });
+
+      // 监听主持人来电
+      peer.on("call", (call) => {
+        // 应答通话
+        if (localStream) call.answer(localStream);
+        else call.answer();
+        
+        // 接收主持人的流
+        call.on("stream", (remoteStream) => {
+          const isScreen = call.metadata?.type === "screen";
+          addVideo(call.peer, remoteStream, "主持人", true, isScreen);
+        });
+      });
+
+      // Peer错误处理
+      peer.on("error", (err) => {
+        console.error("Peer错误", err);
+        showToast("加入会议失败，请重试", "error");
+        leaveRoom();
+      });
+    }
+
+    // 处理收到的消息
+    function handleMessage(data, fromPeer) {
+      switch (data.type) {
+        // 参会者加入
+        case "join":
+          userList.set(data.peerId, { 
+            name: data.name || "参会者", 
+            host: false, 
+            mic: false, 
+            cam: false, 
+            hand: false,
+            isPresenter: false
+          });
+          updateUserList();
+          // 同步当前状态给新加入的参会者
+          connections.get(data.peerId).send({ 
+            type: "init", 
+            list: Object.fromEntries(userList),
+            presenterId: currentPresenter,
+            mode: currentMode
+          });
+          // 同步流给新参会者
+          if(localStream) {
+            const call = peer.call(data.peerId, localStream);
+          }
+          if(shareStream) {
+            const call = peer.call(data.peerId, shareStream, { metadata: { type: "screen" } });
+          }
+          showToast(`新参会者加入会议`, "success");
+          break;
+        
+        // 初始化同步（新加入参会者）
+        case "init":
+          userList.clear();
+          Object.entries(data.list).forEach(([id, info]) => userList.set(id, info));
+          currentPresenter = data.presenterId;
+          currentMode = data.mode;
+          // 更新UI
+          updatePresenterUI();
+          execSwitchMode(currentMode);
+          updateUserList();
+          break;
+        
+        // 同步参会者列表
+        case "list":
+          userList.clear();
+          Object.entries(data.list).forEach(([id, info]) => userList.set(id, info));
+          updateUserList();
+          break;
+        
+        // 同步用户信息
+        case "info":
+          Object.entries(data.list).forEach(([id, info]) => userList.set(id, info));
+          updateUserList();
+          break;
+        
+        // 聊天消息
+        case "chat":
+          addChat(data.name, data.text);
+          addBarrage(data.text);
+          break;
+        
+        // 控制指令
+        case "control":
+          if (data.target === localPeerId) {
+            switch (data.cmd) {
+              case "mic":
+                if (localStream) {
+                  localStream.getAudioTracks()[0].enabled = data.val;
+                  isMiced = data.val;
+                  document.getElementById("micBtn").style.background = isMiced ? "#00b42a" : "#374151";
+                  updateMyInfo();
+                }
+                showToast(data.val ? "主持人已开启你的麦克风" : "主持人已关闭你的麦克风");
+                break;
+              
+              case "cam":
+                if (localStream) {
+                  localStream.getVideoTracks()[0].enabled = data.val;
+                  isCamered = data.val;
+                  document.getElementById("cameraBtn").style.background = isCamered ? "#00b42a" : "#374151";
+                  isCamered ? addVideo(localPeerId, localStream, "我", isHost) : removeVideo(localPeerId);
+                  updateMyInfo();
+                }
+                showToast(data.val ? "主持人已开启你的摄像头" : "主持人已关闭你的摄像头");
+                break;
+              
+              case "kick":
+                leaveRoom();
+                showToast("你已被主持人踢出会议", "error");
+                break;
+            }
+          }
+          break;
+        
+        // 切换主讲人
+        case "switchPresenter":
+          currentPresenter = data.presenterId;
+          userList.clear();
+          Object.entries(data.list).forEach(([id, info]) => userList.set(id, info));
+          updatePresenterUI();
+          updateUserList();
+          const presenterName = userList.get(currentPresenter)?.name || "主持人";
+          showToast(`${presenterName}成为当前主讲人`, "success");
+          break;
+        
+        // 模式切换同步（参会者静默执行，无权限校验）
+        case "switchMode":
+          execSwitchMode(data.mode);
+          break;
+        
+        // 白板绘制同步
+        case "boardDraw":
+          syncBoardDraw(data);
+          break;
+        
+        // 清空白板同步
+        case "boardClear":
+          clearMainBoard();
+          break;
+        
+        // 课件展示同步
+        case "fileShow":
+          syncFileShow(data);
+          break;
+        
+        // 停止屏幕共享同步
+        case "stopShare":
+          removeVideo(fromPeer, true);
+          break;
+      }
+    }
+
+    // 参会者离开处理
+    function userDelete(peerId) {
+      connections.delete(peerId);
+      // 如果离开的是主讲人，自动把主讲权限交回主持人
+      if(peerId === currentPresenter && isHost) {
+        takeBackPresenter();
+      }
+      userList.delete(peerId);
+      removeVideo(peerId);
+      removeVideo(peerId, true);
+      updateUserList();
+      showToast("参会者已离开会议");
+    }
+
+    // 离开会议
+    function leaveRoom() {
+      // 关闭所有连接
+      connections.forEach(conn => conn.close());
+      connections.clear();
+      
+      // 销毁Peer
+      if (peer) {
+        peer.destroy();
+        peer = null;
+      }
+      
+      // 停止所有媒体流
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+      if (shareStream) shareStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+      shareStream = null;
+      
+      // 重置状态
+      isMiced = false;
+      isCamered = false;
+      isHandUp = false;
+      isSharing = false;
+      isRecording = false;
+      currentMode = "video";
+      currentPresenter = "";
+      userList.clear();
+      
+      // 重置UI
+      videosEl.innerHTML = "";
+      chatBox.innerHTML = "";
+      document.getElementById("mobileChat").innerHTML = "";
+      document.getElementById("room").classList.add("hidden");
+      document.getElementById("home").classList.remove("hidden");
+      document.getElementById("allMuteBtn").classList.add("hidden");
+      document.getElementById("joinKey").value = "";
+      clearMainBoard();
+      document.getElementById("filePreviewBox").innerHTML = `<p class="text-gray-400 text-lg">暂无共享课件</p>`;
+    }
+
+    // ========== 事件绑定 ==========
+    // 首页按钮
+    document.getElementById("createBtn").onclick = createRoom;
+    document.getElementById("joinBtn").onclick = () => document.getElementById("joinModal").classList.remove("hidden");
+    document.getElementById("cancelJoin").onclick = () => document.getElementById("joinModal").classList.add("hidden");
+    document.getElementById("confirmJoin").onclick = () => joinRoom(document.getElementById("joinKey").value);
+    
+    // 会议基础按钮
+    document.getElementById("leaveBtn").onclick = leaveRoom;
+    document.getElementById("copyKey").onclick = () => {
+      navigator.clipboard.writeText(roomKey).then(() => {
+        showToast("密钥已复制到剪贴板", "success");
+      }).catch(() => {
+        showToast("复制失败，请手动复制", "error");
+      });
+    };
+    document.getElementById("allMuteBtn").onclick = allMute;
+
+    // 模式切换按钮（主动切换，带权限校验）
+    document.getElementById("videoMode").onclick = () => activeSwitchMode("video");
+    document.getElementById("whiteboardMode").onclick = () => activeSwitchMode("whiteboard");
+    document.getElementById("fileMode").onclick = () => activeSwitchMode("file");
+
+    // 媒体控制按钮
+    document.getElementById("micBtn").onclick = toggleMic;
+    document.getElementById("cameraBtn").onclick = toggleCamera;
+    document.getElementById("shareBtn").onclick = toggleShare;
+    document.getElementById("recordBtn").onclick = toggleRecord;
+    document.getElementById("handBtn").onclick = toggleHand;
+
+    // 聊天按钮
+    document.getElementById("sendChat").onclick = sendChat;
+    document.getElementById("mobileSend").onclick = sendChat;
+    document.getElementById("chatInput").addEventListener("keydown", (e) => e.key === "Enter" && sendChat());
+    document.getElementById("mobileInput").addEventListener("keydown", (e) => e.key === "Enter" && sendChat());
+
+    // 移动端侧边栏
+    document.getElementById("sideToggle").onclick = () => {
+      mobileSide.classList.remove("translate-x-full");
+      mobileMask.classList.remove("hidden");
+      mobileMask.classList.add("pointer-events-auto");
+    };
+    document.getElementById("closeMobile").onclick = () => {
+      mobileSide.classList.add("translate-x-full");
+      mobileMask.classList.add("hidden");
+      mobileMask.classList.remove("pointer-events-auto");
+    };
+    document.getElementById("mobileMask").onclick = () => {
+      mobileSide.classList.add("translate-x-full");
+      mobileMask.classList.add("hidden");
+      mobileMask.classList.remove("pointer-events-auto");
+    };
+
+    // 页面关闭时清理资源
+    window.addEventListener("beforeunload", (e) => {
+      if (roomKey) {
+        leaveRoom();
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+  </script>
+</body>
+</html>
