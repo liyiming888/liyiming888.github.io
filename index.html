@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>网课会议系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1677ff',
+            success: '#00b42a',
+            warning: '#ff7d00',
+            danger: '#f53f3f',
+            dark: '#1f2937',
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .scrollbar-hide { scrollbar-width: none; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .video-card { aspect-ratio: 16/9; }
+      .barrage { animation: barrage 8s linear forwards; }
+      @keyframes barrage {
+        from { transform: translateX(100vw); }
+        to { transform: translateX(-100%); }
+      }
+      .canvas-absolute { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 m-0 p-0 min-h-screen">
+  <!-- 全局提示框 -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded bg-black/75 text-white z-50 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+
+  <!-- 首页 -->
+  <div id="home" class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold text-dark mb-2">网课会议系统</h1>
+      <p class="text-gray-500">创建/加入会议 · 密钥入会 · 网课直播</p>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+      <button id="createBtn" class="flex-1 bg-primary hover:bg-primary/90 text-white py-4 px-6 rounded-xl text-lg font-medium">创建会议</button>
+      <button id="joinBtn" class="flex-1 bg-white border-2 border-primary text-primary hover:bg-primary/5 py-4 px-6 rounded-xl text-lg font-medium">加入会议</button>
+    </div>
+  </div>
+
+  <!-- 加入会议弹窗 -->
+  <div id="joinModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4">加入会议</h3>
+      <input type="text" id="joinKey" placeholder="请输入12位会议密钥" class="w-full border border-gray-300 rounded-lg px-4 py-3 mb-4 outline-none focus:border-primary">
+      <div class="flex gap-3">
+        <button id="cancelJoin" class="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-50">取消</button>
+        <button id="confirmJoin" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">加入会议</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 会议主界面 -->
+  <div id="room" class="hidden flex flex-col h-screen bg-dark text-white">
+    <!-- 顶部信息栏 -->
+    <div class="flex items-center justify-between p-3 border-b border-gray-700 flex-wrap gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div>
+          <p class="m-0 text-sm text-gray-300">会议密钥</p>
+          <p id="roomKey" class="m-0 text-lg font-bold text-primary"></p>
+        </div>
+        <button id="copyKey" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">复制</button>
+        <div id="qrcodeContainer" class="w-16 h-16 bg-white rounded p-1"></div>
+        <button id="allMuteBtn" class="bg-warning/80 hover:bg-warning px-2 py-1 rounded text-sm hidden">全员静音</button>
+        <span id="presenterTag" class="text-xs bg-success/20 text-success px-2 py-1 rounded-full hidden">当前主讲人</span>
+      </div>
+      <div>
+        <span id="userRole" class="text-success font-medium"></span>
+        <button id="leaveBtn" class="ml-3 bg-danger hover:bg-danger/90 px-4 py-1.5 rounded text-sm">离开会议</button>
+      </div>
+    </div>
+
+    <!-- 中间主体区域 -->
+    <div class="flex flex-1 overflow-hidden relative">
+      <!-- 中央主屏幕 -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- 模式切换栏（仅主讲人可见） -->
+        <div id="modeTab" class="flex border-b border-gray-700 px-3 gap-6 hidden">
+          <button id="videoMode" class="py-2 px-1 text-sm font-medium border-b-2 border-primary text-primary">视频会议</button>
+          <button id="whiteboardMode" class="py-2 px-1 text-sm font-medium text-gray-400 hover:text-white">电子白板</button>
+          <button id="fileMode" class="py-2 px-1 text-sm font-medium text-gray-400 hover:text-white">课件展示</button>
+        </div>
+
+        <!-- 视频会议区 -->
+        <div id="videoContent" class="flex-1 p-3 overflow-auto">
+          <div id="videos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+
+        <!-- 电子白板区 -->
+        <div id="whiteboardContent" class="flex-1 p-3 overflow-auto hidden">
+          <div class="w-full h-full bg-white rounded-lg overflow-hidden relative">
+            <canvas id="mainWhiteboard" class="w-full h-full"></canvas>
+            <div id="boardControl" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 px-4 py-2 rounded-full hidden">
+              <button id="clearMainBoard" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600">🗑️</button>
+              <input type="color" id="boardColor" class="w-8 h-8 rounded-full" value="#000000">
+              <input type="range" id="boardWidth" min="1" max="10" value="2" class="w-20">
+            </div>
+          </div>
+        </div>
+
+        <!-- 课件展示区 -->
+        <div id="fileContent" class="flex-1 p-3 overflow-auto hidden">
+          <div class="w-full h-full flex flex-col bg-gray-800 rounded-lg overflow-hidden relative">
+            <div id="filePreviewBox" class="w-full h-full flex items-center justify-center relative">
+              <p class="text-gray-400 text-lg">暂无共享课件</p>
+              <canvas id="fileCanvas" class="canvas-absolute hidden"></canvas>
+            </div>
+            <div id="fileDrawControl" class="w-full p-3 border-t border-gray-700 hidden">
+              <div class="flex gap-3 items-center justify-center">
+                <button id="clearFileDraw" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600">🗑️</button>
+                <input type="color" id="fileDrawColor" class="w-8 h-8 rounded-full" value="#ff0000">
+                <input type="range" id="fileDrawWidth" min="1" max="10" value="3" class="w-20">
+                <span class="text-xs text-gray-300">课件标注</span>
+              </div>
+            </div>
+            <div id="fileControl" class="w-full p-3 border-t border-gray-700 hidden">
+              <div class="flex gap-3 items-center">
+                <input type="file" id="mainUploadFile" class="hidden" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx">
+                <label for="mainUploadFile" class="bg-primary px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-primary/90">上传课件</label>
+                <span id="currentFileName" class="text-gray-300 text-sm">未选择文件</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧侧边栏 -->
+      <div class="w-72 border-l border-gray-700 flex flex-col bg-gray-900 hidden md:flex">
+        <div class="p-3 border-b border-gray-700 flex-1 overflow-y-auto scrollbar-hide">
+          <h3 class="text-sm font-bold mb-2">参会者 <span id="userCount">0</span></h3>
+          <div id="userList" class="space-y-1.5"></div>
+        </div>
+        <div class="p-3 border-t border-gray-700 h-48 flex flex-col">
+          <h3 class="text-sm font-bold mb-1">聊天</h3>
+          <div id="chatBox" class="flex-1 bg-gray-800 rounded p-2 text-sm overflow-y-auto scrollbar-hide mb-2"></div>
+          <div class="flex gap-1">
+            <input id="chatInput" class="flex-1 px-2 py-1.5 text-sm rounded outline-none bg-gray-700" placeholder="发送消息...">
+            <button id="sendChat" class="px-3 py-1.5 bg-primary text-sm rounded">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div class="flex justify-center gap-3 p-3 border-t border-gray-700 flex-wrap">
+      <button id="micBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl">🎤</button>
+      <button id="cameraBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl">📷</button>
+      <button id="shareBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl">🖥️</button>
+      <button id="recordBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl">⏺️</button>
+      <button id="handBtn" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 text-xl">✋</button>
+      <button id="sideToggle" class="md:hidden w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl">☰</button>
+    </div>
+  </div>
+
+  <!-- 移动端侧边栏 -->
+  <div id="mobileMask" class="fixed inset-0 bg-black/40 z-40 hidden pointer-events-none"></div>
+  <div id="mobileSide" class="fixed right-0 top-0 bottom-0 w-72 bg-gray-900 z-50 transform translate-x-full transition-transform duration-300 overflow-y-auto scrollbar-hide">
+    <button id="closeMobile" class="w-full bg-danger hover:bg-danger/90 text-white py-3 font-bold sticky top-0">关闭面板</button>
+    <div class="p-3">
+      <div class="mb-4">
+        <h3 class="text-sm font-bold mb-2">参会者 <span id="mobileCount">0</span></h3>
+        <div id="mobileList" class="space-y-1.5"></div>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold mb-2">聊天</h3>
+        <div id="mobileChat" class="bg-gray-800 h-40 rounded p-2 text-sm mb-2 overflow-y-auto"></div>
+        <input id="mobileInput" class="w-full px-2 py-1.5 text-sm rounded bg-gray-700 mb-2 outline-none" placeholder="发送消息...">
+        <button id="mobileSend" class="w-full bg-primary text-sm py-1.5 rounded">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹幕容器 -->
+  <div id="barrageContainer" class="fixed inset-0 pointer-events-none z-30"></div>
+
+  <script>
+    // 全局变量
+    let peer, localStream, shareStream, mediaRecorder;
+    let localPeerId = "", roomKey = "", currentMode = "video", currentPresenter = "";
+    let isHost = false, isMiced = false, isCamered = false, isHandUp = false, isSharing = false, isRecording = false;
+    let isBoardDrawing = false, isFileDrawing = false, mainBoardCtx, fileCanvasCtx;
+    const conns = new Map(), users = new Map();
+    
+    // DOM元素预获取
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      toast: $("toast"),
+      home: $("home"),
+      room: $("room"),
+      joinModal: $("joinModal"),
+      videos: $("videos"),
+      chatBox: $("chatBox"),
+      mobileChat: $("mobileChat"),
+      mobileSide: $("mobileSide"),
+      mobileMask: $("mobileMask"),
+      barrageContainer: $("barrageContainer")
+    };
+
+    // 基础工具函数
+    function showToast(msg, type = "normal") {
+      els.toast.textContent = msg;
+      els.toast.className = "fixed top-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded text-white z-50 opacity-100 transition-opacity duration-300 pointer-events-none";
+      els.toast.classList.add(type === "success" ? "bg-success/90" : type === "error" ? "bg-danger/90" : "bg-black/75");
+      setTimeout(() => els.toast.classList.replace("opacity-100", "opacity-0"), 2500);
+    }
+
+    function generateKey() {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      return Array(12).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join("");
+    }
+
+    function broadcast(data) {
+      conns.forEach(conn => conn.open && conn.send(data));
+    }
+
+    // 权限检查
+    function isPresenter() { return localPeerId === currentPresenter; }
+    function hasDrawPermission() {
+      const me = users.get(localPeerId);
+      return me && (me.isPresenter || me.canDrawFile);
+    }
+
+    // UI权限更新
+    function updatePresenterUI() {
+      const isP = isPresenter();
+      $("modeTab").className = isP ? "flex border-b border-gray-700 px-3 gap-6" : "hidden";
+      $("boardControl").className = isP ? "absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 px-4 py-2 rounded-full" : "hidden";
+      $("fileControl").className = isP ? "w-full p-3 border-t border-gray-700" : "hidden";
+      $("presenterTag").className = isP ? "text-xs bg-success/20 text-success px-2 py-1 rounded-full" : "hidden";
+      updateFileDrawUI();
+    }
+
+    function updateFileDrawUI() {
+      const hasPerm = hasDrawPermission();
+      $("fileDrawControl").className = hasPerm ? "w-full p-3 border-t border-gray-700" : "hidden";
+    }
+
+    // 模式切换
+    function execSwitchMode(mode) {
+      document.querySelectorAll("#modeTab button").forEach(btn => {
+        btn.classList.remove("border-b-2", "border-primary", "text-primary");
+        btn.classList.add("text-gray-400");
+      });
+      $("videoContent").classList.add("hidden");
+      $("whiteboardContent").classList.add("hidden");
+      $("fileContent").classList.add("hidden");
+      
+      switch(mode) {
+        case "video":
+          $("videoMode").classList.add("border-b-2", "border-primary", "text-primary");
+          $("videoContent").classList.remove("hidden");
+          break;
+        case "whiteboard":
+          $("whiteboardMode").classList.add("border-b-2", "border-primary", "text-primary");
+          $("whiteboardContent").classList.remove("hidden");
+          initBoardSize();
+          break;
+        case "file":
+          $("fileMode").classList.add("border-b-2", "border-primary", "text-primary");
+          $("fileContent").classList.remove("hidden");
+          initFileCanvasSize();
+          break;
+      }
+      currentMode = mode;
+    }
+
+    function activeSwitchMode(mode) {
+      if(!isPresenter()) return showToast("仅主讲人可切换模式", "error");
+      execSwitchMode(mode);
+      broadcast({ type: "switchMode", mode });
+    }
+
+    // 视频画面管理
+    function addVideo(peerId, stream, label, isHostTag = false, isScreen = false) {
+      const id = isScreen ? `screen-${peerId}` : `v-${peerId}`;
+      if($(id)) return $(id).querySelector("video").srcObject = stream;
+
+      const card = document.createElement("div");
+      card.className = isScreen ? "bg-gray-800 rounded-lg overflow-hidden relative col-span-full video-card" : "bg-gray-800 rounded-lg overflow-hidden relative video-card";
+      card.id = id;
+
+      const video = document.createElement("video");
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = peerId === localPeerId && !isScreen;
+      video.srcObject = stream;
+      video.className = "w-full h-full object-cover";
+
+      const nameTag = document.createElement("div");
+      nameTag.className = "absolute bottom-3 left-3 bg-black/60 px-3 py-1 rounded text-sm font-medium";
+      nameTag.textContent = label + (isHostTag ? " (主持人)" : "") + (isScreen ? " - 屏幕共享" : "");
+
+      card.append(video, nameTag);
+      els.videos.appendChild(card);
+      if(isScreen && isPresenter()) activeSwitchMode("video");
+    }
+
+    function removeVideo(peerId, isScreen = false) {
+      const el = $(isScreen ? `screen-${peerId}` : `v-${peerId}`);
+      el && el.remove();
+    }
+
+    // 用户列表管理
+    function updateUserList() {
+      const listEl = $("userList"), mobileList = $("mobileList");
+      listEl.innerHTML = mobileList.innerHTML = "";
+      const count = users.size;
+      $("userCount").textContent = $("mobileCount").textContent = count;
+
+      users.forEach((info, id) => {
+        const item = document.createElement("div");
+        item.className = "flex justify-between items-center bg-gray-800 p-2 rounded text-sm flex-wrap gap-1";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = info.name + (info.hand ? " ✋" : "") + (info.isPresenter ? " 👨‍🏫" : "") + (info.canDrawFile ? " ✏️" : "");
+        nameSpan.className = info.host || info.isPresenter ? "text-primary font-bold" : "";
+
+        const btns = document.createElement("div");
+        btns.className = "flex gap-1 flex-wrap";
+
+        if(isHost && id !== localPeerId) {
+          const micBtn = document.createElement("button");
+          micBtn.textContent = info.mic ? "禁麦" : "开麦";
+          micBtn.className = "px-2 py-0.5 bg-primary/80 rounded text-xs";
+          micBtn.onclick = () => sendControl(id, "mic", !info.mic);
+
+          const camBtn = document.createElement("button");
+          camBtn.textContent = info.cam ? "禁画" : "开画";
+          camBtn.className = "px-2 py-0.5 bg-warning/80 rounded text-xs";
+          camBtn.onclick = () => sendControl(id, "cam", !info.cam);
+
+          const presenterBtn = document.createElement("button");
+          presenterBtn.textContent = info.isPresenter ? "收回主讲" : "设为主讲";
+          presenterBtn.className = "px-2 py-0.5 bg-success/80 rounded text-xs";
+          presenterBtn.onclick = () => info.isPresenter ? takeBackPresenter() : switchPresenter(id);
+
+          const drawBtn = document.createElement("button");
+          drawBtn.textContent = info.canDrawFile ? "收回画笔" : "授权画笔";
+          drawBtn.className = "px-2 py-0.5 bg-purple-500/80 rounded text-xs";
+          drawBtn.onclick = () => toggleDrawPermission(id);
+
+          const kickBtn = document.createElement("button");
+          kickBtn.textContent = "踢出";
+          kickBtn.className = "px-2 py-0.5 bg-danger/80 rounded text-xs";
+          kickBtn.onclick = () => sendControl(id, "kick", true);
+
+          btns.append(micBtn, camBtn, presenterBtn, drawBtn, kickBtn);
+        }
+
+        item.append(nameSpan, btns);
+        listEl.appendChild(item);
+        mobileList.appendChild(item.cloneNode(true));
+      });
+    }
+
+    function updateMyInfo() {
+      users.set(localPeerId, {
+        name: isHost ? "主持人" : "参会者",
+        host: isHost,
+        mic: isMiced,
+        cam: isCamered,
+        hand: isHandUp,
+        isPresenter: isPresenter(),
+        canDrawFile: isPresenter() || (users.get(localPeerId)?.canDrawFile || false)
+      });
+      updateUserList();
+      broadcast({ type: "updateUser", list: Object.fromEntries(users) });
+    }
+
+    // 主持人控制
+    function sendControl(toId, cmd, val) {
+      broadcast({ type: "control", target: toId, cmd, val });
+    }
+
+    function switchPresenter(targetId) {
+      if(!isHost) return;
+      currentPresenter = targetId;
+      users.forEach((info, id) => {
+        info.isPresenter = id === currentPresenter;
+        if(info.isPresenter) info.canDrawFile = true;
+      });
+      broadcast({ type: "switchPresenter", presenterId: targetId, list: Object.fromEntries(users) });
+      updatePresenterUI();
+      updateUserList();
+      showToast(`已授予主讲权限给${users.get(targetId)?.name}`, "success");
+    }
+
+    function takeBackPresenter() {
+      if(!isHost) return;
+      switchPresenter(localPeerId);
+      showToast("已收回主讲权限", "success");
+    }
+
+    function toggleDrawPermission(targetId) {
+      if(!isHost) return;
+      const user = users.get(targetId);
+      if(user.isPresenter) return showToast("主讲人默认有画笔权限", "error");
+      user.canDrawFile = !user.canDrawFile;
+      broadcast({ type: "updateUser", list: Object.fromEntries(users) });
+      updateUserList();
+      showToast(user.canDrawFile ? "已授予画笔权限" : "已收回画笔权限", "success");
+    }
+
+    // 聊天弹幕
+    function sendChat() {
+      const text = ($("chatInput").value || $("mobileInput").value).trim();
+      if(!text || !roomKey) return;
+      const data = { type: "chat", name: isHost ? "主持人" : "参会者", text };
+      broadcast(data);
+      addChat(data.name, data.text);
+      addBarrage(data.text);
+      $("chatInput").value = $("mobileInput").value = "";
+    }
+
+    function addChat(name, text) {
+      const div = document.createElement("div");
+      div.className = "mb-1.5 break-words";
+      div.innerHTML = `<span class="${name === "主持人" ? "text-primary font-bold" : "text-gray-300"}">${name}：</span>${text}`;
+      els.chatBox.appendChild(div);
+      els.mobileChat.appendChild(div.cloneNode(true));
+      els.chatBox.scrollTop = els.chatBox.scrollHeight;
+      els.mobileChat.scrollTop = els.mobileChat.scrollHeight;
+    }
+
+    function addBarrage(text) {
+      const bar = document.createElement("div");
+      bar.className = "barrage absolute text-white text-base px-3 py-1 bg-black/60 rounded-full whitespace-nowrap";
+      bar.textContent = text;
+      bar.style.top = `${Math.random() * 75 + 10}%`;
+      els.barrageContainer.appendChild(bar);
+      setTimeout(() => bar.remove(), 8000);
+    }
+
+    // 白板功能
+    function initBoardSize() {
+      const canvas = $("mainWhiteboard");
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      if(!mainBoardCtx) mainBoardCtx = canvas.getContext("2d");
+      mainBoardCtx.lineCap = mainBoardCtx.lineJoin = "round";
+    }
+
+    function initBoard() {
+      const canvas = $("mainWhiteboard");
+      mainBoardCtx = canvas.getContext("2d");
+
+      const startDraw = (e) => {
+        if(!isPresenter()) return;
+        isBoardDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        mainBoardCtx.beginPath();
+        mainBoardCtx.moveTo(x, y);
+        mainBoardCtx.strokeStyle = $("boardColor").value;
+        mainBoardCtx.lineWidth = $("boardWidth").value;
+      };
+
+      const draw = (e) => {
+        if(!isBoardDrawing || !isPresenter()) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        mainBoardCtx.lineTo(x, y);
+        mainBoardCtx.stroke();
+        broadcast({ type: "boardDraw", x, y, isEnd: false, color: mainBoardCtx.strokeStyle, width: mainBoardCtx.lineWidth });
+      };
+
+      const endDraw = () => {
+        if(!isBoardDrawing) return;
+        isBoardDrawing = false;
+        mainBoardCtx.closePath();
+        broadcast({ type: "boardDraw", isEnd: true });
+      };
+
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mousemove", draw);
+      canvas.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("mouseleave", endDraw);
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDraw(e.touches[0]); });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e.touches[0]); });
+      canvas.addEventListener("touchend", endDraw);
+
+      $("clearMainBoard").onclick = () => {
+        if(!isPresenter()) return showToast("仅主讲人可清空", "error");
+        clearBoard();
+        broadcast({ type: "boardClear" });
+      };
+
+      window.addEventListener("resize", initBoardSize);
+    }
+
+    function clearBoard() {
+      const canvas = $("mainWhiteboard");
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function syncBoardDraw(data) {
+      const ctx = $("mainWhiteboard").getContext("2d");
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.width;
+      ctx.lineCap = ctx.lineJoin = "round";
+      data.isEnd ? ctx.closePath() : ctx.lineTo(data.x, data.y) && ctx.stroke();
+    }
+
+    // 课件画笔功能
+    function initFileCanvasSize() {
+      const canvas = $("fileCanvas");
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      if(!fileCanvasCtx) fileCanvasCtx = canvas.getContext("2d");
+      fileCanvasCtx.lineCap = fileCanvasCtx.lineJoin = "round";
+    }
+
+    function initFileCanvas() {
+      const canvas = $("fileCanvas");
+      fileCanvasCtx = canvas.getContext("2d");
+
+      const startDraw = (e) => {
+        if(!hasDrawPermission()) return;
+        isFileDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        fileCanvasCtx.beginPath();
+        fileCanvasCtx.moveTo(x, y);
+        fileCanvasCtx.strokeStyle = $("fileDrawColor").value;
+        fileCanvasCtx.lineWidth = $("fileDrawWidth").value;
+      };
+
+      const draw = (e) => {
+        if(!isFileDrawing || !hasDrawPermission()) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        fileCanvasCtx.lineTo(x, y);
+        fileCanvasCtx.stroke();
+        broadcast({ type: "fileDraw", x, y, isEnd: false, color: fileCanvasCtx.strokeStyle, width: fileCanvasCtx.lineWidth });
+      };
+
+      const endDraw = () => {
+        if(!isFileDrawing) return;
+        isFileDrawing = false;
+        fileCanvasCtx.closePath();
+        broadcast({ type: "fileDraw", isEnd: true });
+      };
+
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mousemove", draw);
+      canvas.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("mouseleave", endDraw);
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDraw(e.touches[0]); });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e.touches[0]); });
+      canvas.addEventListener("touchend", endDraw);
+
+      $("clearFileDraw").onclick = () => {
+        if(!hasDrawPermission()) return showToast("无标注权限", "error");
+        clearFileDraw();
+        broadcast({ type: "fileDrawClear" });
+      };
+
+      window.addEventListener("resize", () => currentMode === "file" && initFileCanvasSize());
+    }
+
+    function clearFileDraw() {
+      const canvas = $("fileCanvas");
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function syncFileDraw(data) {
+      const ctx = $("fileCanvas").getContext("2d");
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.width;
+      ctx.lineCap = ctx.lineJoin = "round";
+      data.isEnd ? ctx.closePath() : ctx.lineTo(data.x, data.y) && ctx.stroke();
+    }
+
+    // 课件上传
+    function initFileUpload() {
+      const input = $("mainUploadFile"), previewBox = $("filePreviewBox"), fileNameEl = $("currentFileName");
+      input.onchange = (e) => {
+        if(!isPresenter()) return showToast("仅主讲人可上传课件", "error");
+        if(e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        fileNameEl.textContent = file.name;
+        previewBox.innerHTML = "";
+        clearFileDraw();
+        broadcast({ type: "fileDrawClear" });
+
+        if(file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const container = document.createElement("div");
+            container.className = "w-full h-full flex items-center justify-center relative";
+            const img = document.createElement("img");
+            img.src = event.target.result;
+            img.className = "max-w-full max-h-full object-contain";
+            const canvas = $("fileCanvas");
+            canvas.className = "canvas-absolute";
+            canvas.hidden = false;
+            container.append(img, canvas);
+            previewBox.appendChild(container);
+            initFileCanvasSize();
+            updateFileDrawUI();
+            broadcast({ type: "fileShow", fileName: file.name, fileType: "image", fileData: event.target.result });
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const url = URL.createObjectURL(file);
+          const div = document.createElement("div");
+          div.className = "text-center";
+          div.innerHTML = `<p class="text-white text-lg mb-3">${file.name}</p><a href="${url}" download="${file.name}" class="bg-primary px-4 py-2 rounded-lg text-white inline-block">下载查看</a>`;
+          previewBox.appendChild(div);
+          $("fileCanvas").hidden = true;
+          broadcast({ type: "fileShow", fileName: file.name, fileType: "file", fileUrl: url });
+        }
+        showToast(`课件已上传：${file.name}`, "success");
+        activeSwitchMode("file");
+      };
+    }
+
+    function syncFileShow(data) {
+      const previewBox = $("filePreviewBox");
+      previewBox.innerHTML = "";
+      clearFileDraw();
+
+      if(data.fileType === "image") {
+        const container = document.createElement("div");
+        container.className = "w-full h-full flex items-center justify-center relative";
+        const img = document.createElement("img");
+        img.src = data.fileData;
+        img.className = "max-w-full max-h-full object-contain";
+        const canvas = $("fileCanvas");
+        canvas.className = "canvas-absolute";
+        canvas.hidden = false;
+        container.append(img, canvas);
+        previewBox.appendChild(container);
+        initFileCanvasSize();
+        updateFileDrawUI();
+      } else {
+        const div = document.createElement("div");
+        div.className = "text-center";
+        div.innerHTML = `<p class="text-white text-lg mb-3">${data.fileName}</p><a href="${data.fileUrl}" download="${data.fileName}" class="bg-primary px-4 py-2 rounded-lg text-white inline-block">下载查看</a>`;
+        previewBox.appendChild(div);
+        $("fileCanvas").hidden = true;
+      }
+      execSwitchMode("file");
+      showToast(`主讲人共享了课件：${data.fileName}`, "success");
+    }
+
+    // 媒体功能
+    async function toggleMic() {
+      try {
+        if(!localStream) {
+          showToast("正在请求麦克风权限...");
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isCamered });
+          localStream.getAudioTracks()[0].enabled = false;
+          conns.forEach(conn => {
+            const call = peer.call(conn.peer, localStream);
+            call.on("stream", stream => addVideo(conn.peer, stream, users.get(conn.peer)?.name || "参会者", users.get(conn.peer)?.host));
+          });
+        }
+        const track = localStream.getAudioTracks()[0];
+        track.enabled = !track.enabled;
+        isMiced = track.enabled;
+        $("micBtn").style.background = isMiced ? "#00b42a" : "#374151";
+        showToast(isMiced ? "麦克风已开启" : "麦克风已关闭", isMiced ? "success" : "normal");
+        updateMyInfo();
+      } catch (e) {
+        showToast(e.name === "NotAllowedError" ? "您拒绝了麦克风权限，请在浏览器地址栏允许后重试" : "麦克风启动失败", "error");
+      }
+    }
+
+    async function toggleCamera() {
+      try {
+        if(!localStream) {
+          showToast("正在请求摄像头权限...");
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: isMiced });
+          localStream.getVideoTracks()[0].enabled = false;
+          conns.forEach(conn => {
+            const call = peer.call(conn.peer, localStream);
+            call.on("stream", stream => addVideo(conn.peer, stream, users.get(conn.peer)?.name || "参会者", users.get(conn.peer)?.host));
+          });
+        }
+        const track = localStream.getVideoTracks()[0];
+        track.enabled = !track.enabled;
+        isCamered = track.enabled;
+        $("cameraBtn").style.background = isCamered ? "#00b42a" : "#374151";
+        isCamered ? addVideo(localPeerId, localStream, "我", isHost) : removeVideo(localPeerId);
+        showToast(isCamered ? "摄像头已开启" : "摄像头已关闭", isCamered ? "success" : "normal");
+        updateMyInfo();
+      } catch (e) {
+        showToast(e.name === "NotAllowedError" ? "您拒绝了摄像头权限，请在浏览器地址栏允许后重试" : "摄像头启动失败", "error");
+      }
+    }
+
+    async function toggleShare() {
+      try {
+        if(!isSharing) {
+          showToast("正在请求屏幕共享权限...");
+          shareStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: 1920, height: 1080 }, audio: true });
+          isSharing = true;
+          addVideo(localPeerId, shareStream, "我", isHost, true);
+          $("shareBtn").style.background = "#00b42a";
+          conns.forEach(conn => peer.call(conn.peer, shareStream, { metadata: { type: "screen" } }));
+          shareStream.getVideoTracks()[0].onended = stopShare;
+          showToast("屏幕共享已开启", "success");
+        } else {
+          stopShare();
+        }
+      } catch (e) {
+        showToast("屏幕共享启动失败，请重试", "error");
+      }
+    }
+
+    function stopShare() {
+      if(shareStream) shareStream.getTracks().forEach(t => t.stop());
+      shareStream = null;
+      isSharing = false;
+      removeVideo(localPeerId, true);
+      $("shareBtn").style.background = "#374151";
+      broadcast({ type: "stopShare" });
+      showToast("屏幕共享已关闭");
+    }
+
+    function toggleRecord() {
+      if(!localStream && !shareStream) return showToast("请先开启摄像头/麦克风/屏幕共享", "error");
+      if(!isRecording) {
+        const recordStream = new MediaStream();
+        localStream && localStream.getTracks().forEach(t => recordStream.addTrack(t));
+        shareStream && shareStream.getTracks().forEach(t => recordStream.addTrack(t));
+        mediaRecorder = new MediaRecorder(recordStream);
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `会议录制_${new Date().getTime()}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        mediaRecorder.start();
+        isRecording = true;
+        $("recordBtn").style.background = "#f53f3f";
+        showToast("开始录制", "success");
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        $("recordBtn").style.background = "#374151";
+        showToast("录制完成，已自动下载", "success");
+      }
+    }
+
+    function toggleHand() {
+      isHandUp = !isHandUp;
+      $("handBtn").style.background = isHandUp ? "#ff7d00" : "#374151";
+      showToast(isHandUp ? "已举手" : "已取消举手", isHandUp ? "success" : "normal");
+      updateMyInfo();
+    }
+
+    // 会议核心逻辑
+    async function createRoom() {
+      isHost = true;
+      roomKey = generateKey();
+      $("roomKey").textContent = roomKey;
+      $("userRole").textContent = "主持人";
+      $("allMuteBtn").classList.remove("hidden");
+      QRCode.toCanvas($("qrcodeContainer"), roomKey, { width: 64 });
+
+      initBoard();
+      initFileCanvas();
+      initFileUpload();
+
+      peer = new Peer(roomKey);
+      peer.on("open", (id) => {
+        localPeerId = id;
+        currentPresenter = id;
+        users.set(id, { name: "主持人", host: true, mic: false, cam: false, hand: false, isPresenter: true, canDrawFile: true });
+        updatePresenterUI();
+        updateUserList();
+        els.home.classList.add("hidden");
+        els.room.classList.remove("hidden");
+        showToast("会议创建成功！", "success");
+      });
+
+      peer.on("connection", (conn) => {
+        conn.on("open", () => {
+          conns.set(conn.peer, conn);
+          conn.on("data", (data) => handleMessage(data, conn.peer));
+          conn.on("close", () => userDelete(conn.peer));
+          conn.on("error", () => userDelete(conn.peer));
+        });
+      });
+
+      peer.on("call", (call) => {
+        call.answer(call.metadata?.type === "screen" ? null : localStream);
+        call.on("stream", (stream) => addVideo(call.peer, stream, users.get(call.peer)?.name || "参会者", users.get(call.peer)?.host, call.metadata?.type === "screen"));
+        call.on("close", () => { removeVideo(call.peer); removeVideo(call.peer, true); });
+      });
+
+      peer.on("error", () => {
+        showToast("会议创建失败，请重试", "error");
+        leaveRoom();
+      });
+    }
+
+    async function joinRoom(inputKey) {
+      const key = inputKey.trim();
+      if(key.length !== 12) return showToast("请输入正确的12位密钥", "error");
+      roomKey = key;
+      isHost = false;
+      $("roomKey").textContent = roomKey;
+      $("userRole").textContent = "参会者";
+      QRCode.toCanvas($("qrcodeContainer"), roomKey, { width: 64 });
+
+      initBoard();
+      initFileCanvas();
+
+      peer = new Peer();
+      peer.on("open", (id) => {
+        localPeerId = id;
+        const conn = peer.connect(roomKey);
+        conn.on("open", () => {
+          conns.set(roomKey, conn);
+          conn.send({ type: "join", peerId: id, name: "参会者" });
+          els.joinModal.classList.add("hidden");
+          els.home.classList.add("hidden");
+          els.room.classList.remove("hidden");
+          showToast("成功加入会议！", "success");
+        });
+        conn.on("data", (data) => handleMessage(data, roomKey));
+        conn.on("close", () => { showToast("会议已结束", "error"); leaveRoom(); });
+        conn.on("error", () => { showToast("密钥错误或会议不存在", "error"); leaveRoom(); });
+      });
+
+      peer.on("call", (call) => {
+        call.answer(localStream);
+        call.on("stream", (stream) => addVideo(call.peer, stream, "主持人", true, call.metadata?.type === "screen"));
+      });
+
+      peer.on("error", () => {
+        showToast("加入会议失败，请重试", "error");
+        leaveRoom();
+      });
+    }
+
+    function handleMessage(data, fromPeer) {
+      switch(data.type) {
+        case "join":
+          users.set(data.peerId, { name: data.name, host: false, mic: false, cam: false, hand: false, isPresenter: false, canDrawFile: false });
+          updateUserList();
+          conns.get(data.peerId).send({ type: "init", list: Object.fromEntries(users), presenterId: currentPresenter, mode: currentMode });
+          localStream && peer.call(data.peerId, localStream);
+          shareStream && peer.call(data.peerId, shareStream, { metadata: { type: "screen" } });
+          showToast(`新参会者加入`, "success");
+          break;
+        case "init":
+          users.clear();
+          Object.entries(data.list).forEach(([id, info]) => users.set(id, info));
+          currentPresenter = data.presenterId;
+          execSwitchMode(data.mode);
+          updatePresenterUI();
+          updateUserList();
+          break;
+        case "updateUser":
+          users.clear();
+          Object.entries(data.list).forEach(([id, info]) => users.set(id, info));
+          updateUserList();
+          updateFileDrawUI();
+          break;
+        case "switchPresenter":
+          currentPresenter = data.presenterId;
+          users.clear();
+          Object.entries(data.list).forEach(([id, info]) => users.set(id, info));
+          updatePresenterUI();
+          updateUserList();
+          showToast(`${users.get(currentPresenter)?.name}成为主讲人`, "success");
+          break;
+        case "switchMode":
+          execSwitchMode(data.mode);
+          break;
+        case "chat":
+          addChat(data.name, data.text);
+          addBarrage(data.text);
+          break;
+        case "control":
+          if(data.target === localPeerId) {
+            if(data.cmd === "mic" && localStream) {
+              localStream.getAudioTracks()[0].enabled = data.val;
+              isMiced = data.val;
+              $("micBtn").style.background = isMiced ? "#00b42a" : "#374151";
+              updateMyInfo();
+            }
+            if(data.cmd === "cam" && localStream) {
+              localStream.getVideoTracks()[0].enabled = data.val;
+              isCamered = data.val;
+              $("cameraBtn").style.background = isCamered ? "#00b42a" : "#374151";
+              isCamered ? addVideo(localPeerId, localStream, "我", isHost) : removeVideo(localPeerId);
+              updateMyInfo();
+            }
+            if(data.cmd === "kick") {
+              leaveRoom();
+              showToast("你已被主持人踢出会议", "error");
+            }
+            showToast(data.val ? `主持人已开启你的${data.cmd === "mic" ? "麦克风" : "摄像头"}` : `主持人已关闭你的${data.cmd === "mic" ? "麦克风" : "摄像头"}`);
+          }
+          break;
+        case "boardDraw":
+          syncBoardDraw(data);
+          break;
+        case "boardClear":
+          clearBoard();
+          break;
+        case "fileDraw":
+          syncFileDraw(data);
+          break;
+        case "fileDrawClear":
+          clearFileDraw();
+          break;
+        case "fileShow":
+          syncFileShow(data);
+          break;
+        case "stopShare":
+          removeVideo(fromPeer, true);
+          break;
+      }
+    }
+
+    function userDelete(peerId) {
+      conns.delete(peerId);
+      if(peerId === currentPresenter && isHost) takeBackPresenter();
+      users.delete(peerId);
+      removeVideo(peerId);
+      removeVideo(peerId, true);
+      updateUserList();
+      showToast("参会者已离开");
+    }
+
+    function leaveRoom() {
+      conns.forEach(conn => conn.close());
+      conns.clear();
+      peer && peer.destroy();
+      localStream && localStream.getTracks().forEach(t => t.stop());
+      shareStream && shareStream.getTracks().forEach(t => t.stop());
+      peer = localStream = shareStream = null;
+      isMiced = isCamered = isHandUp = isSharing = isRecording = false;
+      currentMode = "video";
+      currentPresenter = "";
+      users.clear();
+      els.videos.innerHTML = els.chatBox.innerHTML = els.mobileChat.innerHTML = "";
+      els.room.classList.add("hidden");
+      els.home.classList.remove("hidden");
+      $("allMuteBtn").classList.add("hidden");
+      $("joinKey").value = "";
+      clearBoard();
+      clearFileDraw();
+    }
+
+    // 事件绑定
+    $("createBtn").onclick = createRoom;
+    $("joinBtn").onclick = () => els.joinModal.classList.remove("hidden");
+    $("cancelJoin").onclick = () => els.joinModal.classList.add("hidden");
+    $("confirmJoin").onclick = () => joinRoom($("joinKey").value);
+    $("leaveBtn").onclick = leaveRoom;
+    $("copyKey").onclick = () => navigator.clipboard.writeText(roomKey).then(() => showToast("密钥已复制", "success")).catch(() => showToast("复制失败", "error"));
+    $("allMuteBtn").onclick = () => { users.forEach((info, id) => !info.host && sendControl(id, "mic", false)); showToast("已全员静音", "success"); };
+
+    $("videoMode").onclick = () => activeSwitchMode("video");
+    $("whiteboardMode").onclick = () => activeSwitchMode("whiteboard");
+    $("fileMode").onclick = () => activeSwitchMode("file");
+
+    $("micBtn").onclick = toggleMic;
+    $("cameraBtn").onclick = toggleCamera;
+    $("shareBtn").onclick = toggleShare;
+    $("recordBtn").onclick = toggleRecord;
+    $("handBtn").onclick = toggleHand;
+
+    $("sendChat").onclick = sendChat;
+    $("mobileSend").onclick = sendChat;
+    $("chatInput").addEventListener("keydown", (e) => e.key === "Enter" && sendChat());
+    $("mobileInput").addEventListener("keydown", (e) => e.key === "Enter" && sendChat());
+
+    $("sideToggle").onclick = () => { els.mobileSide.classList.remove("translate-x-full"); els.mobileMask.classList.remove("hidden"); els.mobileMask.classList.add("pointer-events-auto"); };
+    $("closeMobile").onclick = () => { els.mobileSide.classList.add("translate-x-full"); els.mobileMask.classList.add("hidden"); els.mobileMask.classList.remove("pointer-events-auto"); };
+    $("mobileMask").onclick = () => { els.mobileSide.classList.add("translate-x-full"); els.mobileMask.classList.add("hidden"); els.mobileMask.classList.remove("pointer-events-auto"); };
+
+    window.addEventListener("beforeunload", (e) => {
+      if(roomKey) { leaveRoom(); e.preventDefault(); e.returnValue = ""; }
+    });
+  </script>
+</body>
+</html>
