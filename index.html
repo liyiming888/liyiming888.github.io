@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone 灵动岛模拟器</title>
+    <meta name="description" content="纯前端实现的iPhone灵动岛模拟器，支持相机、群聊、AI对话、多任务等功能">
+    <style>
+        :root {
+            --light-angle: 145deg;
+            --glass-blur: 20px;
+            --iphone-width: 320px;
+            --iphone-height: 650px;
+            --iphone-radius: 35px;
+            --island-initial-width: 90px;
+            --island-initial-height: 28px;
+            --island-expanded-width: 200px;
+            --island-detailed-width: 280px;
+            --island-detailed-height: 120px;
+            --home-wallpaper: linear-gradient(135deg, #09203F, #537895);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+        }
+
+        .glass {
+            background: linear-gradient(var(--light-angle), rgba(255,255,255,0.25), rgba(255,255,255,0.05));
+            backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 5px 5px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* 设备外壳 */
+        .iphone-device {
+            position: relative;
+            width: var(--iphone-width);
+            height: var(--iphone-height);
+            border-radius: var(--iphone-radius);
+            padding: 12px;
+            background: linear-gradient(145deg, #a0a0a0, #d0d0d0);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            overflow: visible;
+        }
+
+        /* 侧边物理按键 */
+        .left-buttons {
+            position: absolute;
+            left: -4px;
+            top: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            z-index: 9999;
+            pointer-events: auto;
+        }
+        .side-button {
+            width: 6px;
+            height: 50px;
+            border-radius: 3px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.1s ease;
+        }
+        .side-button:active { transform: translateX(2px); opacity: 0.8; }
+        .power-button {
+            position: absolute;
+            right: -4px;
+            top: 180px;
+            width: 6px;
+            height: 70px;
+            border-radius: 3px;
+            cursor: pointer;
+            z-index: 9999;
+            pointer-events: auto;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.1s ease;
+        }
+        .power-button:active { transform: translateX(-2px); opacity: 0.8; }
+
+        /* 屏幕核心区域 */
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            border-radius: calc(var(--iphone-radius) - 8px);
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+            z-index: 1;
+        }
+        .iphone-screen.screen-off { background: #000 !important; }
+
+        /* 主屏幕 */
+        .home-screen {
+            width: 100%;
+            height: 100%;
+            padding: 55px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            background: var(--home-wallpaper);
+            background-size: cover;
+            background-position: center;
+        }
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            gap:15px;
+        }
+        .app-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+        .app-icon-emoji {
+            width:55px; height:55px; border-radius:12px;
+            display: flex; align-items:center; justify-content:center;
+            font-size:30px; margin-bottom:5px;
+        }
+        .app-name { color:#fff; font-size:12px; text-align:center; }
+
+        /* 灵动岛 */
+        .dynamic-island {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: var(--island-initial-width);
+            height: var(--island-initial-height);
+            border-radius: calc(var(--island-initial-height)/2);
+            background: #000;
+            z-index: 100;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .camera-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #000;
+            z-index: 101;
+        }
+        .dynamic-island.expanded {
+            width: var(--island-expanded-width);
+            border-radius: 18px;
+        }
+        .dynamic-island.detailed {
+            width: var(--island-detailed-width);
+            height: var(--island-detailed-height);
+            border-radius: 25px;
+            padding: 12px;
+        }
+        .island-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .island-app-icon { font-size: 14px; }
+        .island-app-info { flex:1; margin-left:8px; overflow: hidden; }
+        .island-app-title { font-weight:600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .island-app-desc { font-size:10px; opacity:0.8; }
+
+        /* 底部Home条 */
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 3px;
+            z-index: 200;
+            cursor: pointer;
+        }
+
+        /* APP容器 */
+        .app-container {
+            width:100%; height:100%;
+            background:#fff;
+            position:absolute; top:0; left:0; z-index:50;
+            display:flex; flex-direction:column;
+        }
+        .app-header {
+            height:50px; display:flex; align-items:center; padding:0 15px;
+            color:#fff; font-weight:600;
+        }
+        .app-content { flex:1; background:#f2f2f7; overflow: hidden; }
+        iframe { width:100%; height:100%; border:none; }
+
+        /* 后台多任务 */
+        .app-switcher {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            z-index: 70;
+            display: none;
+            padding: 60px 10px 80px;
+        }
+        .app-switcher.show { display: block; }
+        .switcher-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            height: 100%;
+        }
+        .switcher-card {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+        .switcher-close {
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 22px; height: 22px;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border-radius: 50%;
+            display: flex; align-items:center; justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* 悬浮AI对话框 */
+        .ai-float-dialog {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            background: rgba(20,20,20,0.9);
+            border-radius: 20px;
+            padding:12px 16px;
+            z-index: 90;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-float-dialog.show { display:flex; }
+        .ai-float-input {
+            flex: 1;
+            padding:8px 12px;
+            border-radius:16px;
+            border:none;
+            background: rgba(255,255,255,0.1);
+            color:#fff;
+            font-size:14px;
+        }
+        .ai-float-send {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* 松果AI APP */
+        .ai-full-app {
+            width:100%; height:100%;
+            position:absolute; top:0; left:0; z-index:60;
+            background:#1a1a2e;
+            color:#fff;
+            padding:60px 16px 80px;
+            display: none;
+            flex-direction: column;
+        }
+        .ai-full-app.show { display:flex; }
+        .ai-chat-history {
+            flex:1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap:10px;
+        }
+        .ai-msg {
+            max-width:80%;
+            padding:8px 12px;
+            border-radius:16px;
+            word-wrap: break-word;
+        }
+        .ai-msg.user { align-self:end; background:#007aff; }
+        .ai-msg.ai { align-self:start; background:rgba(255,255,255,0.1); }
+        .ai-msg img { max-width: 100%; border-radius: 8px; margin-top: 4px; }
+
+        /* 设置APP */
+        .settings-list { padding:16px; }
+        .settings-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom:1px solid #eee;
+        }
+        .settings-switch {
+            width:50px; height:30px; background:#ccc; border-radius:15px; position:relative;
+        }
+        .settings-switch::after {
+            content:''; width:26px; height:26px; background:#fff; border-radius:50%;
+            position:absolute; top:2px; left:2px; transition:0.2s;
+        }
+        .settings-switch.on { background:#07c160; }
+        .settings-switch.on::after { left:22px; }
+        .wallpaper-option {
+            width: 60px; height: 60px; border-radius: 12px; margin: 6px;
+            cursor: pointer; border: 2px solid transparent;
+        }
+        .wallpaper-option.active { border-color: #007aff; }
+
+        /* 相机APP */
+        .camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+        .camera-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .shutter-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #888;
+            cursor: pointer;
+        }
+        .camera-back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* 相册APP */
+        .album-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            padding: 2px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .album-photo {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        .photo-preview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-preview.show { display: flex; }
+        .photo-preview img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* 群聊APP */
+        .chat-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            height: 50px;
+            background: #25D366;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+        .online-count { font-size: 12px; opacity: 0.9; }
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .chat-msg {
+            max-width: 75%;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-msg.self { align-self: flex-end; }
+        .chat-msg.other { align-self: flex-start; }
+        .chat-msg-name {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .chat-msg-content {
+            padding: 8px 12px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+        .chat-msg.self .chat-msg-content { background: #95ec69; }
+        .chat-msg.other .chat-msg-content { background: #fff; }
+        .chat-msg-content img { max-width: 100%; border-radius: 6px; }
+        .chat-input-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: #fff;
+            border-top: 1px solid #eee;
+        }
+        .chat-photo-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 20px;
+            border: 1px solid #eee;
+            background: #f5f5f5;
+        }
+        .chat-send-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #25D366;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        .photo-selector {
+            position: absolute;
+            bottom: 70px;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            padding: 10px;
+            display: none;
+            z-index: 10;
+        }
+        .photo-selector.show { display: block; }
+        .photo-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .hidden { display:none !important; }
+        .progress-bar {
+            width:100%; height:6px; background:#ddd; border-radius:3px; margin-top:6px; overflow:hidden;
+        }
+        .progress-fill { height:100%; background:#007aff; width:68%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="iphone-device glass">
+    <!-- 侧边按键 -->
+    <div class="left-buttons">
+        <div class="volume-up side-button"></div>
+        <div class="volume-down side-button"></div>
+    </div>
+    <div class="power-button right-button"></div>
+
+    <!-- 手机屏幕 -->
+    <div class="iphone-screen screen-off">
+        <!-- 灵动岛 -->
+        <div class="dynamic-island">
+            <div class="camera-placeholder"></div>
+            <div class="island-content"></div>
+        </div>
+
+        <!-- 主屏幕 -->
+        <div class="home-screen hidden">
+            <div class="app-grid"></div>
+        </div>
+
+        <!-- APP容器 -->
+        <div class="app-container hidden"></div>
+
+        <!-- 后台多任务 -->
+        <div class="app-switcher">
+            <div class="switcher-grid"></div>
+        </div>
+
+        <!-- 悬浮AI对话框 -->
+        <div class="ai-float-dialog">
+            <input class="ai-float-input" placeholder="问松果AI..." />
+            <button class="ai-float-send glass">↑</button>
+        </div>
+
+        <!-- 底部Home条 -->
+        <div class="home-indicator"></div>
+    </div>
+</div>
+
+<script>
+    // 全局状态管理
+    const state = {
+        isPowerOn: false,
+        isScreenOn: false,
+        activeApp: null,
+        backgroundActivities: new Map(),
+        appBackgroundList: [],
+        aiFloatMode: false,
+        aiHistory: [],
+        homeSwipeCount: 0,
+        powerClickCount: 0,
+        islandClickCount: 0,
+        timers: {}
+    };
+
+    // 核心配置
+    const config = {
+        DEEPSEEK_API_KEY: "sk-678240ff6e0d4951bec795b0823cbbaf",
+        DEEPSEEK_API_URL: "https://api.deepseek.com/v1/chat/completions",
+        USER_ID: Math.random().toString(36).substr(2, 8),
+        USER_NAME: "用户" + Math.random().toString(36).substr(2, 4),
+        CHAT_STORAGE_KEY: "iphone_group_chat",
+        ONLINE_STORAGE_KEY: "iphone_online_users",
+        ALBUM_STORAGE_KEY: "iphone_album",
+        ISLAND_DURATION: 3500
+    };
+
+    // 全局数据
+    let photoAlbum = JSON.parse(localStorage.getItem(config.ALBUM_STORAGE_KEY)) || [];
+
+    // APP配置表
+    const apps = {
+        相机: { icon:"📷", color:"#1C1C1E", type: "camera" },
+        相册: { icon:"🖼️", color:"#FF9500", type: "album" },
+        群聊: { icon:"👥", color:"#25D366", type: "chat" },
+        设置: { icon:"⚙️", color:"#8E8E93", type: "settings" },
+        Safari: { icon:"🌐", color:"#007AFF", type: "web", url: "https://www.baidu.com" },
+        音乐: { icon:"🎵", color:"#FF2D55", type: "web", url: "https://music.apple.com" },
+        流体云: { icon:"☁️", color:"#4fa3ff", type: "update" },
+        松果AI: { icon:"🤖", color:"#5856d6", type: "ai" },
+    };
+
+    // 壁纸列表
+    const wallpapers = [
+        { name: '深蓝', css: 'linear-gradient(135deg, #09203F, #537895)' },
+        { name: '紫黑', css: 'linear-gradient(135deg, #24243E, #302B63)' },
+        { name: '墨绿', css: 'linear-gradient(135deg, #1A2980, #26D0CE)' },
+        { name: '暖橙', css: 'linear-gradient(135deg, #FF416C, #FF4B2B)' },
+        { name: '暗黑', css: '#111' }
+    ];
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', () => {
+        renderHomeScreen();
+        updateDynamicIsland();
+        bindEvents();
+        initOnlineStatus();
+        initChatListener();
+        // 点击空白关闭灵动岛详情
+        document.querySelector('.iphone-screen').addEventListener('click', (e) => {
+            if(!e.target.closest('.dynamic-island')) collapseIslandDetail();
+        });
+    });
+
+    // 事件绑定
+    function bindEvents() {
+        // 音量按键
+        document.querySelector('.volume-up').addEventListener('click', () => state.isPowerOn && console.log("音量+"));
+        document.querySelector('.volume-down').addEventListener('click', () => state.isPowerOn && console.log("音量-"));
+
+        // 电源按键逻辑
+        const powerBtn = document.querySelector('.power-button');
+        powerBtn.addEventListener('click', () => {
+            state.powerClickCount++;
+            clearTimeout(state.timers.power);
+            state.timers.power = setTimeout(() => {
+                if(state.powerClickCount === 1) singlePower();
+                else if(state.powerClickCount === 2) doublePower();
+                else if(state.powerClickCount >= 3) triplePower();
+                state.powerClickCount = 0;
+            }, 500);
+        });
+
+        // 灵动岛点击逻辑
+        const island = document.querySelector('.dynamic-island');
+        island.addEventListener('click', () => {
+            if(state.backgroundActivities.size === 0) return;
+            state.islandClickCount++;
+            clearTimeout(state.timers.island);
+            state.timers.island = setTimeout(() => {
+                if(state.islandClickCount === 1){
+                    const [app] = Array.from(state.backgroundActivities.entries()).pop();
+                    openApp(app);
+                }else{
+                    toggleIslandDetail();
+                }
+                state.islandClickCount = 0;
+            }, 350);
+        });
+
+        // Home条点击逻辑
+        const homeIndicator = document.querySelector('.home-indicator');
+        homeIndicator.addEventListener('click', () => {
+            const switcher = document.querySelector('.app-switcher');
+            // 后台界面点击返回主页
+            if(switcher.classList.contains('show')){
+                switcher.classList.remove('show');
+                return;
+            }
+            // APP内点击返回主页
+            if(state.activeApp) {
+                closeAppToHome();
+            } else {
+                // 主页双击打开后台
+                state.homeSwipeCount++;
+                clearTimeout(state.timers.homeSwipe);
+                state.timers.homeSwipe = setTimeout(() => {
+                    if(state.homeSwipeCount >= 2) openSwitcher();
+                    state.homeSwipeCount = 0;
+                }, 300);
+            }
+        });
+
+        // 悬浮AI发送事件
+        const floatInput = document.querySelector('.ai-float-input');
+        const floatSendBtn = document.querySelector('.ai-float-send');
+        const sendFloatMsg = () => {
+            const txt = floatInput.value.trim();
+            if(!txt) return;
+            handleAIInput(txt);
+            floatInput.value='';
+        };
+        floatInput.addEventListener('keydown',(e)=> e.key==='Enter' && sendFloatMsg());
+        floatSendBtn.addEventListener('click', sendFloatMsg);
+    }
+
+    // 电源核心逻辑
+    function singlePower(){ 
+        if(!state.isPowerOn) return; 
+        state.isScreenOn = !state.isScreenOn; 
+        updateScreen(); 
+    }
+    function doublePower(){
+        state.isPowerOn = !state.isPowerOn;
+        state.isScreenOn = state.isPowerOn;
+        updateScreen();
+        if(!state.isPowerOn){
+            state.activeApp = null;
+            state.backgroundActivities.clear();
+            state.appBackgroundList = [];
+            closeFloatAI();
+        }
+    }
+    function triplePower(){
+        if(!state.isPowerOn || !state.isScreenOn) return;
+        state.aiFloatMode = true;
+        document.querySelector('.ai-float-dialog').classList.add('show');
+    }
+
+    // 屏幕状态更新
+    function updateScreen(){
+        const scr = document.querySelector('.iphone-screen');
+        const home = document.querySelector('.home-screen');
+        if(state.isScreenOn){
+            scr.classList.remove('screen-off');
+            if(!state.activeApp) home.classList.remove('hidden');
+        }else{
+            scr.classList.add('screen-off');
+            home.classList.add('hidden');
+            document.querySelector('.app-container').classList.add('hidden');
+            document.querySelector('.app-switcher').classList.remove('show');
+            closeFloatAI();
+        }
+    }
+
+    function closeFloatAI(){
+        state.aiFloatMode = false;
+        document.querySelector('.ai-float-dialog').classList.remove('show');
+    }
+
+    // 渲染主屏幕
+    function renderHomeScreen(){
+        const grid = document.querySelector('.app-grid');
+        grid.innerHTML = '';
+        Object.entries(apps).forEach(([name,info])=>{
+            const el = document.createElement('div');
+            el.className = 'app-icon';
+            el.innerHTML = `
+                <div class="app-icon-emoji glass" style="background:${info.color}">${info.icon}</div>
+                <div class="app-name">${name}</div>
+            `;
+            el.onclick = () => openApp(name);
+            grid.appendChild(el);
+        });
+    }
+
+    // 打开APP核心逻辑
+    function openApp(name){
+        if(!state.isPowerOn || !state.isScreenOn || !apps[name]) return;
+        state.activeApp = name;
+        state.backgroundActivities.delete(name);
+        updateDynamicIsland();
+        closeFloatAI();
+
+        // 隐藏其他界面
+        document.querySelector('.home-screen').classList.add('hidden');
+        document.querySelector('.app-switcher').classList.remove('show');
+        const cont = document.querySelector('.app-container');
+        cont.classList.remove('hidden');
+        const info = apps[name];
+
+        // 基础APP头
+        const appHeader = `
+            <div class="app-header" style="background:${info.color}">
+                <div class="app-title">${name}</div>
+            </div>
+        `;
+
+        // 按APP类型渲染内容
+        switch(info.type){
+            case "web":
+                cont.innerHTML = appHeader + `<div class="app-content"><iframe src="${info.url}"></iframe></div>`;
+                break;
+            case "update":
+                cont.innerHTML = appHeader + `
+                    <div class="app-content" style="padding:20px;">
+                        <div style="font-size:18px;font-weight:bold;">更新中</div>
+                        <div style="margin-top:8px;">正在下载资源包</div>
+                        <div class="progress-bar"><div class="progress-fill"></div></div>
+                        <div style="margin-top:4px;font-size:12px;color:#666">68%</div>
+                    </div>
+                `;
+                break;
+            case "settings":
+                cont.innerHTML = appHeader + `
+                    <div class="app-content">
+                        <div class="settings-list">
+                            <div class="settings-row"><div>飞行模式</div><div class="settings-switch"></div></div>
+                            <div class="settings-row"><div>Wi‑Fi</div><div class="settings-switch on"></div></div>
+                            <div class="settings-row"><div>蓝牙</div><div class="settings-switch on"></div></div>
+                            <div class="settings-row"><div>蜂窝网络</div><div class="settings-switch"></div></div>
+                            <div class="settings-row"><div>声音</div><div class="settings-switch on"></div></div>
+                            <div class="settings-row"><div>亮度自动</div><div class="settings-switch on"></div></div>
+                            <div class="settings-row"><div>相机权限</div><div class="settings-switch on"></div></div>
+                            <div style="padding:12px 0;border-bottom:1px solid #eee;">
+                                <div style="margin-bottom:8px;">壁纸</div>
+                                <div style="display:flex;flex-wrap:wrap;" id="wallpaper-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // 初始化壁纸选择器
+                setTimeout(()=>{
+                    const list = document.getElementById('wallpaper-list');
+                    wallpapers.forEach((w)=>{
+                        const div = document.createElement('div');
+                        div.className = 'wallpaper-option';
+                        div.style.background = w.css;
+                        div.onclick = () => {
+                            document.documentElement.style.setProperty('--home-wallpaper',w.css);
+                            document.querySelectorAll('.wallpaper-option').forEach(o=>o.classList.remove('active'));
+                            div.classList.add('active');
+                        };
+                        list.appendChild(div);
+                    });
+                    document.querySelectorAll('.settings-switch').forEach(s=>{
+                        s.onclick = () => s.classList.toggle('on');
+                    });
+                },0);
+                break;
+            case "ai":
+                cont.innerHTML = appHeader + `
+                    <div class="app-content">
+                        <div style="height:100%;display:flex;flex-direction:column;padding:16px;">
+                            <div class="ai-chat-history" id="ai-full-chat"></div>
+                            <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+                                <input style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #ddd;" placeholder="输入问题..." id="ai-full-input">
+                                <button id="ai-full-send" class="glass" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#000;font-size:16px;cursor:pointer;">↑</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // 初始化AI聊天
+                setTimeout(()=>{
+                    const chatBox = document.getElementById('ai-full-chat');
+                    const input = document.getElementById('ai-full-input');
+                    const sendBtn = document.getElementById('ai-full-send');
+                    // 渲染历史记录
+                    state.aiHistory.forEach(item=>{
+                        chatBox.innerHTML += `<div class="ai-msg ${item.role}">${item.text}</div>`;
+                    });
+                    // 发送函数
+                    const sendMsg = () => {
+                        const t = input.value.trim();
+                        if(!t) return;
+                        handleAIInput(t);
+                        input.value = '';
+                    };
+                    input.addEventListener('keydown', e => e.key==='Enter' && sendMsg());
+                    sendBtn.addEventListener('click', sendMsg);
+                },0);
+                break;
+            case "camera":
+                cont.innerHTML = `
+                    <div class="app-content" style="position:relative;background:#000;">
+                        <button class="camera-back-btn">×</button>
+                        <video class="camera-preview" autoplay muted playsinline></video>
+                        <div class="camera-controls">
+                            <button class="shutter-btn"></button>
+                        </div>
+                    </div>
+                `;
+                initCamera();
+                break;
+            case "album":
+                cont.innerHTML = appHeader + `
+                    <div class="app-content">
+                        <div class="album-grid" id="album-grid"></div>
+                        <div class="photo-preview" id="photo-preview">
+                            <img id="preview-img" src="" alt="">
+                        </div>
+                    </div>
+                `;
+                renderAlbum();
+                break;
+            case "chat":
+                cont.innerHTML = `
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <span>公共群聊</span>
+                            <span class="online-count" id="online-count">在线：1人</span>
+                        </div>
+                        <div class="chat-messages" id="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <button class="chat-photo-btn glass">📷</button>
+                            <input class="chat-input" id="chat-input" placeholder="输入消息...">
+                            <button class="chat-send-btn">发送</button>
+                        </div>
+                        <div class="photo-selector" id="photo-selector">
+                            <div class="photo-selector-grid" id="photo-selector-grid"></div>
+                        </div>
+                    </div>
+                `;
+                initChatApp();
+                break;
+            default:
+                cont.innerHTML = appHeader + `
+                    <div class="app-content" style="display:flex;align-items:center;justify-content:center;">
+                        <div style="text-align:center;">
+                            <div style="font-size:60px;">${info.icon}</div>
+                            <div style="font-size:20px;margin-top:12px;">${name}</div>
+                        </div>
+                    </div>
+                `;
+        }
+    }
+
+    // 关闭APP返回主页
+    function closeAppToHome(){
+        if(!state.activeApp) return;
+        const name = state.activeApp;
+        const info = apps[name];
+        
+        // 加入后台列表
+        if(!state.appBackgroundList.includes(name)) state.appBackgroundList.push(name);
+        
+        // 上岛显示
+        state.backgroundActivities.set(name,{
+            title:name,
+            content:info.type==="update"?"更新中 68%":"后台运行"
+        });
+        updateDynamicIsland();
+
+        // 定时下岛
+        clearTimeout(state.timers.islandAutoClose);
+        state.timers.islandAutoClose = setTimeout(() => {
+            state.backgroundActivities.delete(name);
+            updateDynamicIsland();
+        }, config.ISLAND_DURATION);
+
+        // 重置状态
+        state.activeApp = null;
+        document.querySelector('.app-container').classList.add('hidden');
+        document.querySelector('.home-screen').classList.remove('hidden');
+    }
+
+    // 灵动岛核心逻辑
+    function updateDynamicIsland(){
+        const island = document.querySelector('.dynamic-island');
+        const content = document.querySelector('.island-content');
+        content.innerHTML = '';
+        
+        if(state.backgroundActivities.size === 0){
+            island.classList.remove('expanded','detailed');
+            return;
+        }
+
+        const [name,act] = Array.from(state.backgroundActivities.entries()).pop();
+        island.classList.add('expanded');
+        content.innerHTML = `
+            <div class="island-app-icon">${apps[name].icon}</div>
+            <div class="island-app-info">
+                <div class="island-app-title">${act.title}</div>
+                <div class="island-app-desc">${act.content}</div>
+            </div>
+        `;
+    }
+    function toggleIslandDetail(){
+        const island = document.querySelector('.dynamic-island');
+        island.classList.toggle('detailed');
+        island.classList.contains('detailed') ? autoCollapseIsland() : clearTimeout(state.timers.islandDetail);
+    }
+    function collapseIslandDetail(){
+        document.querySelector('.dynamic-island').classList.remove('detailed');
+        clearTimeout(state.timers.islandDetail);
+    }
+    function autoCollapseIsland(){
+        clearTimeout(state.timers.islandDetail);
+        state.timers.islandDetail = setTimeout(()=>collapseIslandDetail(),10000);
+    }
+
+    // 后台多任务逻辑
+    function openSwitcher(){
+        const switcher = document.querySelector('.app-switcher');
+        const grid = document.querySelector('.switcher-grid');
+        grid.innerHTML = '';
+        
+        state.appBackgroundList.forEach(name=>{
+            const card = document.createElement('div');
+            card.className = 'switcher-card';
+            card.innerHTML = `
+                <div class="switcher-close" data-name="${name}">×</div>
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${apps[name].color}">
+                    <div style="font-size:40px;color:#fff;">${apps[name].icon}</div>
+                </div>
+            `;
+            card.onclick = () => {openApp(name);switcher.classList.remove('show');};
+            grid.appendChild(card);
+        });
+
+        switcher.classList.add('show');
+        // 关闭后台APP
+        document.querySelectorAll('.switcher-close').forEach(btn=>{
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const name = btn.dataset.name;
+                state.appBackgroundList = state.appBackgroundList.filter(n=>n!==name);
+                state.backgroundActivities.delete(name);
+                updateDynamicIsland();
+                openSwitcher();
+            };
+        });
+    }
+
+    // AI核心逻辑
+    function addAIHistory(text,role){
+        state.aiHistory.push({text,role});
+        if(state.aiHistory.length>50) state.aiHistory.shift();
+        
+        // 悬浮模式上岛
+        if(state.aiFloatMode){
+            const island = document.querySelector('.dynamic-island');
+            island.classList.add('detailed');
+            state.backgroundActivities.set("松果AI",{title:"松果AI",content:text.slice(0,12)+"..."});
+            updateDynamicIsland();
+            autoCollapseIsland();
+        }
+
+        // 同步到AI聊天框
+        const chatBox = document.getElementById('ai-full-chat');
+        if(chatBox) chatBox.innerHTML += `<div class="ai-msg ${role}">${text}</div>`;
+    }
+
+    function handleAIInput(text){
+        addAIHistory(text,'user');
+        // 优先处理打开APP指令
+        const openReg = /^打开(.+?)$/;
+        const match = text.match(openReg);
+        if(match) {
+            const appName = match[1].trim();
+            if(apps[appName]) {
+                setTimeout(()=>{
+                    addAIHistory(`已为您打开${appName}`,'ai');
+                    openApp(appName);
+                },500);
+            } else {
+                setTimeout(()=>addAIHistory(`抱歉，没有找到${appName}这个APP`,'ai'),500);
+            }
+            return;
+        }
+        // 调用Deepseek API
+        callDeepseekAPI(text);
+    }
+
+    // Deepseek API调用
+    async function callDeepseekAPI(userInput){
+        const isFloat = state.aiFloatMode;
+        if(!isFloat) addAIHistory('正在思考...','ai');
+        
+        try {
+            const response = await fetch(config.DEEPSEEK_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${config.DEEPSEEK_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'system', content: '你是松果AI，一款内置在iPhone模拟器中的智能助手，回答简洁友好，符合手机助手定位' },
+                        { role: 'user', content: userInput }
+                    ],
+                    stream: false,
+                    temperature: 0.7
+                })
+            });
+
+            if(!response.ok) throw new Error('API调用失败');
+            const data = await response.json();
+            const reply = data.choices[0].message.content;
+
+            if(!isFloat){
+                const chatBox = document.getElementById('ai-full-chat');
+                chatBox.lastChild.remove();
+            }
+            addAIHistory(reply,'ai');
+
+        } catch (error) {
+            const errMsg = `抱歉，调用失败：${error.message}`;
+            if(!isFloat){
+                const chatBox = document.getElementById('ai-full-chat');
+                chatBox.lastChild.remove();
+            }
+            addAIHistory(errMsg,'ai');
+        }
+    }
+
+    // 相机初始化（权限+拍照+保存）
+    function initCamera(){
+        const video = document.querySelector('.camera-preview');
+        const shutterBtn = document.querySelector('.shutter-btn');
+        const backBtn = document.querySelector('.camera-back-btn');
+        let stream = null;
+
+        // 申请相机权限并启动
+        async function startCamera(){
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+                video.srcObject = stream;
+            } catch (error) {
+                alert('相机权限申请失败，请在浏览器设置中允许相机权限，刷新页面重试');
+            }
+        }
+
+        // 拍照逻辑
+        shutterBtn.addEventListener('click', () => {
+            if(!stream) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            const photoUrl = canvas.toDataURL('image/jpeg');
+            
+            // 保存到相册
+            photoAlbum.unshift(photoUrl);
+            localStorage.setItem(config.ALBUM_STORAGE_KEY, JSON.stringify(photoAlbum));
+            
+            // 拍照反馈
+            video.style.filter = 'brightness(2)';
+            setTimeout(() => video.style.filter = 'none', 100);
+        });
+
+        // 返回按钮
+        backBtn.addEventListener('click', () => {
+            if(stream) stream.getTracks().forEach(track => track.stop());
+            closeAppToHome();
+        });
+
+        startCamera();
+    }
+
+    // 渲染相册
+    function renderAlbum(){
+        const grid = document.getElementById('album-grid');
+        const preview = document.getElementById('photo-preview');
+        const previewImg = document.getElementById('preview-img');
+        grid.innerHTML = '';
+
+        if(photoAlbum.length === 0){
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:50px 0;color:#666;">暂无照片</div>';
+            return;
+        }
+
+        photoAlbum.forEach(photo => {
+            const img = document.createElement('img');
+            img.src = photo;
+            img.className = 'album-photo';
+            img.onclick = () => {
+                previewImg.src = photo;
+                preview.classList.add('show');
+            };
+            grid.appendChild(img);
+        });
+
+        preview.onclick = () => preview.classList.remove('show');
+    }
+
+    // 群聊APP初始化（修复双bug）
+    function initChatApp(){
+        const msgBox = document.getElementById('chat-messages');
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.querySelector('.chat-send-btn');
+        const photoBtn = document.querySelector('.chat-photo-btn');
+        const photoSelector = document.getElementById('photo-selector');
+        const photoGrid = document.getElementById('photo-selector-grid');
+        const onlineCountEl = document.getElementById('online-count');
+
+        // 渲染聊天记录
+        window.renderChatMessages = function(){
+            const messages = JSON.parse(localStorage.getItem(config.CHAT_STORAGE_KEY)) || [];
+            msgBox.innerHTML = '';
+            messages.forEach(msg => {
+                const isSelf = msg.userId === config.USER_ID;
+                const msgEl = document.createElement('div');
+                msgEl.className = `chat-msg ${isSelf ? 'self' : 'other'}`;
+                msgEl.innerHTML = `
+                    <div class="chat-msg-name">${isSelf ? '我' : msg.userName}</div>
+                    <div class="chat-msg-content">${msg.content}</div>
+                `;
+                msgBox.appendChild(msgEl);
+            });
+            msgBox.scrollTop = msgBox.scrollHeight;
+        };
+
+        // 更新在线人数
+        window.updateOnlineCount = function(){
+            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
+            const count = Object.keys(onlineUsers).length;
+            onlineCountEl.innerText = `在线：${count}人`;
+        };
+
+        // 发送消息
+        function sendMessage(content){
+            if(!content.trim()) return;
+            const messages = JSON.parse(localStorage.getItem(config.CHAT_STORAGE_KEY)) || [];
+            const newMsg = {
+                userId: config.USER_ID,
+                userName: config.USER_NAME,
+                content: content,
+                time: Date.now()
+            };
+            messages.push(newMsg);
+            if(messages.length>200) messages.shift();
+            localStorage.setItem(config.CHAT_STORAGE_KEY, JSON.stringify(messages));
+            input.value = '';
+            renderChatMessages();
+        }
+
+        // 发送事件绑定
+        sendBtn.onclick = () => sendMessage(input.value);
+        input.onkeydown = e => e.key==='Enter' && sendMessage(input.value);
+
+        // 照片选择器
+        photoBtn.onclick = () => {
+            photoSelector.classList.toggle('show');
+            photoGrid.innerHTML = '';
+            if(photoAlbum.length === 0){
+                photoGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:10px;color:#666;">暂无照片</div>';
+                return;
+            }
+            photoAlbum.forEach(photo => {
+                const img = document.createElement('img');
+                img.src = photo;
+                img.style.width = '100%';
+                img.style.aspectRatio = '1/1';
+                img.style.objectFit = 'cover';
+                img.onclick = () => {
+                    sendMessage(`<img src="${photo}" alt="照片">`);
+                    photoSelector.classList.remove('show');
+                };
+                photoGrid.appendChild(img);
+            });
+        };
+
+        // 初始化渲染
+        renderChatMessages();
+        updateOnlineCount();
+    }
+
+    // 在线状态管理
+    function initOnlineStatus(){
+        function updateOnline(){
+            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
+            onlineUsers[config.USER_ID] = Date.now();
+            // 清理30秒离线用户
+            Object.keys(onlineUsers).forEach(id => {
+                if(Date.now() - onlineUsers[id] > 30000) delete onlineUsers[id];
+            });
+            localStorage.setItem(config.ONLINE_STORAGE_KEY, JSON.stringify(onlineUsers));
+            // 实时更新在线人数
+            if(state.activeApp === '群聊' && window.updateOnlineCount) window.updateOnlineCount();
+        }
+        // 心跳包
+        updateOnline();
+        setInterval(updateOnline, 10000);
+        // 页面卸载清理
+        window.addEventListener('beforeunload', () => {
+            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
+            delete onlineUsers[config.USER_ID];
+            localStorage.setItem(config.ONLINE_STORAGE_KEY, JSON.stringify(onlineUsers));
+        });
+    }
+
+    // 群聊消息实时同步（修复跨标签页看不到消息bug）
+    function initChatListener(){
+        // 监听storage变化，实时同步消息和在线人数
+        window.addEventListener('storage', (e) => {
+            if(e.key === config.CHAT_STORAGE_KEY && state.activeApp === '群聊' && window.renderChatMessages){
+                window.renderChatMessages();
+            }
+            if(e.key === config.ONLINE_STORAGE_KEY && state.activeApp === '群聊' && window.updateOnlineCount){
+                window.updateOnlineCount();
+            }
+        });
+    }
+</script>
+</body>
+</html>
