@@ -2,1291 +2,849 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iPhone 灵动岛模拟器</title>
-    <meta name="description" content="纯前端实现的iPhone灵动岛模拟器，支持相机、群聊、AI对话、多任务等功能">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>EduLearn - 在线网课平台 | 精英教师 互动学习</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        :root {
-            --light-angle: 145deg;
-            --glass-blur: 20px;
-            --iphone-width: 320px;
-            --iphone-height: 650px;
-            --iphone-radius: 35px;
-            --island-initial-width: 90px;
-            --island-initial-height: 28px;
-            --island-expanded-width: 200px;
-            --island-detailed-width: 280px;
-            --island-detailed-height: 120px;
-            --home-wallpaper: linear-gradient(135deg, #09203F, #537895);
-        }
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            outline: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #111;
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            line-height: 1.5;
         }
 
-        .glass {
-            background: linear-gradient(var(--light-angle), rgba(255,255,255,0.25), rgba(255,255,255,0.05));
-            backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 5px 5px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
-            transition: all 0.3s ease;
+        /* 滚动条美观 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
         }
 
-        /* 设备外壳 */
-        .iphone-device {
-            position: relative;
-            width: var(--iphone-width);
-            height: var(--iphone-height);
-            border-radius: var(--iphone-radius);
-            padding: 12px;
-            background: linear-gradient(145deg, #a0a0a0, #d0d0d0);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            overflow: visible;
+        /* 容器 */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
         }
 
-        /* 侧边物理按键 */
-        .left-buttons {
-            position: absolute;
-            left: -4px;
-            top: 120px;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-            z-index: 9999;
-            pointer-events: auto;
-        }
-        .side-button {
-            width: 6px;
-            height: 50px;
-            border-radius: 3px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.3);
-            transition: all 0.1s ease;
-        }
-        .side-button:active { transform: translateX(2px); opacity: 0.8; }
-        .power-button {
-            position: absolute;
-            right: -4px;
-            top: 180px;
-            width: 6px;
-            height: 70px;
-            border-radius: 3px;
-            cursor: pointer;
-            z-index: 9999;
-            pointer-events: auto;
-            background: rgba(255,255,255,0.3);
-            transition: all 0.1s ease;
-        }
-        .power-button:active { transform: translateX(-2px); opacity: 0.8; }
-
-        /* 屏幕核心区域 */
-        .iphone-screen {
-            width: 100%;
-            height: 100%;
-            border-radius: calc(var(--iphone-radius) - 8px);
-            background: #000;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.5s ease;
-            z-index: 1;
-        }
-        .iphone-screen.screen-off { background: #000 !important; }
-
-        /* 主屏幕 */
-        .home-screen {
-            width: 100%;
-            height: 100%;
-            padding: 55px 20px 20px;
-            display: flex;
-            flex-direction: column;
-            background: var(--home-wallpaper);
-            background-size: cover;
-            background-position: center;
-        }
-        .app-grid {
-            display: grid;
-            grid-template-columns: repeat(4,1fr);
-            gap:15px;
-        }
-        .app-icon {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-        }
-        .app-icon-emoji {
-            width:55px; height:55px; border-radius:12px;
-            display: flex; align-items:center; justify-content:center;
-            font-size:30px; margin-bottom:5px;
-        }
-        .app-name { color:#fff; font-size:12px; text-align:center; }
-
-        /* 灵动岛 */
-        .dynamic-island {
-            position: absolute;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: var(--island-initial-width);
-            height: var(--island-initial-height);
-            border-radius: calc(var(--island-initial-height)/2);
-            background: #000;
+        /* 导航栏 */
+        .navbar {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
+            position: sticky;
+            top: 0;
             z-index: 100;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            overflow: hidden;
+            backdrop-filter: blur(2px);
+            background: rgba(255,255,255,0.96);
         }
-        .camera-placeholder {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #000;
-            z-index: 101;
-        }
-        .dynamic-island.expanded {
-            width: var(--island-expanded-width);
-            border-radius: 18px;
-        }
-        .dynamic-island.detailed {
-            width: var(--island-detailed-width);
-            height: var(--island-detailed-height);
-            border-radius: 25px;
-            padding: 12px;
-        }
-        .island-content {
-            width: 100%;
-            height: 100%;
+        .nav-container {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 10px;
-            color: #fff;
-            font-size: 12px;
+            flex-wrap: wrap;
+            padding: 1rem 0;
         }
-        .island-app-icon { font-size: 14px; }
-        .island-app-info { flex:1; margin-left:8px; overflow: hidden; }
-        .island-app-title { font-weight:600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .island-app-desc { font-size:10px; opacity:0.8; }
-
-        /* 底部Home条 */
-        .home-indicator {
-            position: absolute;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 130px;
-            height: 5px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 3px;
-            z-index: 200;
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .logo i {
+            background: none;
+            -webkit-background-clip: unset;
+            color: #3b82f6;
+            margin-right: 6px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .nav-links a {
+            text-decoration: none;
+            font-weight: 500;
+            color: #334155;
+            transition: 0.2s;
+            font-size: 1rem;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            color: #3b82f6;
+        }
+        .btn-login {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
             cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-login:hover {
+            background: #f1f5f9;
+            border-color: #3b82f6;
+        }
+        .btn-signup {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-signup:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
         }
 
-        /* APP容器 */
-        .app-container {
-            width:100%; height:100%;
-            background:#fff;
-            position:absolute; top:0; left:0; z-index:50;
-            display:flex; flex-direction:column;
+        /* 按钮通用 */
+        button {
+            cursor: pointer;
+            font-family: inherit;
         }
-        .app-header {
-            height:50px; display:flex; align-items:center; padding:0 15px;
-            color:#fff; font-weight:600;
-        }
-        .app-content { flex:1; background:#f2f2f7; overflow: hidden; }
-        iframe { width:100%; height:100%; border:none; }
 
-        /* 后台多任务 */
-        .app-switcher {
-            position: absolute;
+        /* 英雄区 (仅列表视图展示) */
+        .hero {
+            background: linear-gradient(120deg, #eef2ff 0%, #ffffff 80%);
+            border-radius: 2rem;
+            padding: 3rem 2rem;
+            margin: 2rem 0 2rem 0;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #1e293b, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero p {
+            color: #475569;
+            max-width: 600px;
+            margin: 1rem auto 0;
+        }
+
+        /* 搜索栏 + 过滤器 */
+        .search-section {
+            margin: 1.5rem 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        .search-box {
+            flex: 1;
+            max-width: 320px;
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 60px;
+            padding: 0.5rem 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .search-box i {
+            color: #94a3b8;
+        }
+        .search-box input {
+            border: none;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+            background: transparent;
+        }
+        .course-count {
+            font-size: 0.9rem;
+            color: #475569;
+            background: #eef2ff;
+            padding: 0.4rem 1rem;
+            border-radius: 30px;
+        }
+
+        /* 课程网格 */
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .course-card {
+            background: white;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -2px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02);
+            cursor: pointer;
+            border: 1px solid #eef2ff;
+        }
+        .course-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 25px -12px rgba(0,0,0,0.1);
+            border-color: #cbdffc;
+        }
+        .course-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+        }
+        .course-info {
+            padding: 1.25rem;
+        }
+        .course-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+        .course-instructor {
+            font-size: 0.85rem;
+            color: #5b6e8c;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .course-desc {
+            font-size: 0.85rem;
+            color: #475569;
+            margin: 0.6rem 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .course-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.8rem;
+            font-size: 0.8rem;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+
+        /* 详情视图样式 */
+        .detail-container {
+            background: white;
+            border-radius: 2rem;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            font-weight: 600;
+            color: #3b82f6;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        .back-btn:hover {
+            gap: 12px;
+        }
+        .video-wrapper {
+            background: #000;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            margin-bottom: 1.8rem;
+            aspect-ratio: 16 / 9;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+        .detail-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .detail-instructor {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+            color: #4b5563;
+        }
+        .detail-description {
+            font-size: 1rem;
+            color: #334155;
+            line-height: 1.6;
+            margin: 1rem 0;
+            padding: 1rem 0;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .sections {
+            margin: 1.8rem 0;
+        }
+        .sections h3, .reviews h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .chapter-list {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 0.8rem 1.2rem;
+            list-style: none;
+        }
+        .chapter-list li {
+            padding: 0.7rem 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chapter-list li i {
+            color: #3b82f6;
+            width: 24px;
+        }
+        .reviews {
+            margin-top: 2rem;
+        }
+        .review-item {
+            background: #f1f5f9;
+            padding: 0.8rem 1rem;
+            border-radius: 1rem;
+            margin-bottom: 0.8rem;
+        }
+        .review-user {
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .add-review {
+            margin-top: 1rem;
+            display: flex;
+            gap: 10px;
+        }
+        .add-review input {
+            flex: 1;
+            padding: 0.7rem;
+            border-radius: 60px;
+            border: 1px solid #cbd5e1;
+            outline: none;
+        }
+        .add-review button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0 1.4rem;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+        .related-courses {
+            margin-top: 2rem;
+            padding-top: 1rem;
+        }
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .related-card {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+        .related-card:hover {
+            background: #eef2ff;
+        }
+
+        /* 模态框 (登录) */
+        .modal {
+            display: none;
+            position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            z-index: 70;
-            display: none;
-            padding: 60px 10px 80px;
-        }
-        .app-switcher.show { display: block; }
-        .switcher-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            height: 100%;
-        }
-        .switcher-card {
-            background: #fff;
-            border-radius: 16px;
-            overflow: hidden;
-            position: relative;
-        }
-        .switcher-close {
-            position: absolute;
-            top: 6px; right: 6px;
-            width: 22px; height: 22px;
-            background: rgba(0,0,0,0.5);
-            color: #fff;
-            border-radius: 50%;
-            display: flex; align-items:center; justify-content: center;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        /* 悬浮AI对话框 */
-        .ai-float-dialog {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 280px;
-            background: rgba(20,20,20,0.9);
-            border-radius: 20px;
-            padding:12px 16px;
-            z-index: 90;
-            display: none;
-            align-items: center;
-            gap: 8px;
-        }
-        .ai-float-dialog.show { display:flex; }
-        .ai-float-input {
-            flex: 1;
-            padding:8px 12px;
-            border-radius:16px;
-            border:none;
-            background: rgba(255,255,255,0.1);
-            color:#fff;
-            font-size:14px;
-        }
-        .ai-float-send {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
+            align-items: center;
+            z-index: 1000;
         }
-
-        /* 松果AI APP */
-        .ai-full-app {
-            width:100%; height:100%;
-            position:absolute; top:0; left:0; z-index:60;
-            background:#1a1a2e;
-            color:#fff;
-            padding:60px 16px 80px;
-            display: none;
-            flex-direction: column;
+        .modal-content {
+            background: white;
+            max-width: 400px;
+            width: 90%;
+            padding: 2rem;
+            border-radius: 2rem;
+            text-align: center;
         }
-        .ai-full-app.show { display:flex; }
-        .ai-chat-history {
-            flex:1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap:10px;
-        }
-        .ai-msg {
-            max-width:80%;
-            padding:8px 12px;
-            border-radius:16px;
-            word-wrap: break-word;
-        }
-        .ai-msg.user { align-self:end; background:#007aff; }
-        .ai-msg.ai { align-self:start; background:rgba(255,255,255,0.1); }
-        .ai-msg img { max-width: 100%; border-radius: 8px; margin-top: 4px; }
-
-        /* 设置APP */
-        .settings-list { padding:16px; }
-        .settings-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom:1px solid #eee;
-        }
-        .settings-switch {
-            width:50px; height:30px; background:#ccc; border-radius:15px; position:relative;
-        }
-        .settings-switch::after {
-            content:''; width:26px; height:26px; background:#fff; border-radius:50%;
-            position:absolute; top:2px; left:2px; transition:0.2s;
-        }
-        .settings-switch.on { background:#07c160; }
-        .settings-switch.on::after { left:22px; }
-        .wallpaper-option {
-            width: 60px; height: 60px; border-radius: 12px; margin: 6px;
-            cursor: pointer; border: 2px solid transparent;
-        }
-        .wallpaper-option.active { border-color: #007aff; }
-
-        /* 相机APP */
-        .camera-preview {
+        .modal-content input {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #000;
+            margin: 0.8rem 0;
+            padding: 0.8rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 50px;
         }
-        .camera-controls {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .shutter-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #fff;
-            border: 3px solid #888;
+        .close-modal {
+            float: right;
+            font-size: 1.5rem;
             cursor: pointer;
-        }
-        .camera-back-btn {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.5);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            z-index: 10;
         }
 
-        /* 相册APP */
-        .album-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2px;
-            padding: 2px;
-            height: 100%;
-            overflow-y: auto;
+        footer {
+            background: #0f172a;
+            color: #cbd5e1;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            font-size: 0.85rem;
         }
-        .album-photo {
-            width: 100%;
-            aspect-ratio: 1/1;
-            object-fit: cover;
-            cursor: pointer;
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 0 16px;
+            }
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            .nav-container {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .detail-title {
+                font-size: 1.5rem;
+            }
         }
-        .photo-preview {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 100;
+
+        .hide {
             display: none;
-            align-items: center;
-            justify-content: center;
         }
-        .photo-preview.show { display: flex; }
-        .photo-preview img {
-            max-width: 100%;
-            max-height: 100%;
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            padding: 0.3rem 1rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
         }
-
-        /* 群聊APP */
-        .chat-container {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-header {
-            height: 50px;
-            background: #25D366;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-        }
-        .online-count { font-size: 12px; opacity: 0.9; }
-        .chat-messages {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            background: #f5f5f5;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .chat-msg {
-            max-width: 75%;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-msg.self { align-self: flex-end; }
-        .chat-msg.other { align-self: flex-start; }
-        .chat-msg-name {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 2px;
-        }
-        .chat-msg-content {
-            padding: 8px 12px;
-            border-radius: 12px;
-            word-wrap: break-word;
-        }
-        .chat-msg.self .chat-msg-content { background: #95ec69; }
-        .chat-msg.other .chat-msg-content { background: #fff; }
-        .chat-msg-content img { max-width: 100%; border-radius: 6px; }
-        .chat-input-area {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            background: #fff;
-            border-top: 1px solid #eee;
-        }
-        .chat-photo-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        .chat-input {
-            flex: 1;
-            padding: 10px 12px;
-            border-radius: 20px;
-            border: 1px solid #eee;
-            background: #f5f5f5;
-        }
-        .chat-send-btn {
-            padding: 8px 16px;
-            border-radius: 20px;
-            background: #25D366;
-            color: #fff;
+        .enroll-btn {
+            background: #3b82f6;
+            color: white;
             border: none;
-            cursor: pointer;
+            padding: 0.6rem 1.5rem;
+            border-radius: 40px;
+            font-weight: 600;
+            margin-top: 0.5rem;
         }
-        .photo-selector {
-            position: absolute;
-            bottom: 70px;
-            left: 0;
-            width: 100%;
-            background: #fff;
-            padding: 10px;
-            display: none;
-            z-index: 10;
-        }
-        .photo-selector.show { display: block; }
-        .photo-selector-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .hidden { display:none !important; }
-        .progress-bar {
-            width:100%; height:6px; background:#ddd; border-radius:3px; margin-top:6px; overflow:hidden;
-        }
-        .progress-fill { height:100%; background:#007aff; width:68%; transition: width 0.3s; }
     </style>
 </head>
 <body>
 
-<div class="iphone-device glass">
-    <!-- 侧边按键 -->
-    <div class="left-buttons">
-        <div class="volume-up side-button"></div>
-        <div class="volume-down side-button"></div>
+<div class="navbar">
+    <div class="container nav-container">
+        <div class="logo">
+            <i class="fas fa-chalkboard-user"></i> EduLearn
+        </div>
+        <div class="nav-links">
+            <a href="#" id="navHome" class="active">首页</a>
+            <a href="#" id="navCourses">课程</a>
+            <a href="#" id="navAbout">关于</a>
+            <button class="btn-login" id="openLoginBtn"><i class="fas fa-user-circle"></i> 登录</button>
+            <button class="btn-signup" id="openSignupBtn">免费注册</button>
+        </div>
     </div>
-    <div class="power-button right-button"></div>
+</div>
 
-    <!-- 手机屏幕 -->
-    <div class="iphone-screen screen-off">
-        <!-- 灵动岛 -->
-        <div class="dynamic-island">
-            <div class="camera-placeholder"></div>
-            <div class="island-content"></div>
+<main class="container">
+    <!-- 课程列表视图（含首页hero） -->
+    <div id="listView">
+        <div class="hero">
+            <h1>开启你的未来学习之旅</h1>
+            <p>跟着行业专家掌握前沿技能，灵活安排时间，获得认证证书</p>
         </div>
-
-        <!-- 主屏幕 -->
-        <div class="home-screen hidden">
-            <div class="app-grid"></div>
+        <div class="search-section">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="搜索课程名称或讲师...">
+            </div>
+            <div class="course-count" id="courseCount">0 门课程</div>
         </div>
+        <div id="coursesGridContainer" class="courses-grid"></div>
+    </div>
 
-        <!-- APP容器 -->
-        <div class="app-container hidden"></div>
+    <!-- 课程详情视图 (初始隐藏) -->
+    <div id="detailView" class="hide"></div>
+</main>
 
-        <!-- 后台多任务 -->
-        <div class="app-switcher">
-            <div class="switcher-grid"></div>
-        </div>
+<footer>
+    <p>© 2025 EduLearn — 让教育更平等，让知识触手可及 | 沉浸式网课体验</p>
+</footer>
 
-        <!-- 悬浮AI对话框 -->
-        <div class="ai-float-dialog">
-            <input class="ai-float-input" placeholder="问松果AI..." />
-            <button class="ai-float-send glass">↑</button>
-        </div>
-
-        <!-- 底部Home条 -->
-        <div class="home-indicator"></div>
+<!-- 登录模态框 -->
+<div id="authModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeModalBtn">&times;</span>
+        <h3><i class="fas fa-graduation-cap"></i> 欢迎回来</h3>
+        <input type="text" id="loginUser" placeholder="用户名 / 邮箱" value="demo@edulearn.com">
+        <input type="password" id="loginPass" placeholder="密码" value="123456">
+        <button id="doLoginBtn" style="background:#3b82f6; color:white; border:none; padding:10px 20px; border-radius:40px; width:100%; margin-top:10px;">演示登录</button>
+        <p style="margin-top: 1rem; font-size: 0.8rem; color: #64748b;">🔐 演示模式，任意账号均可体验</p>
     </div>
 </div>
 
 <script>
-    // 全局状态管理
-    const state = {
-        isPowerOn: false,
-        isScreenOn: false,
-        activeApp: null,
-        backgroundActivities: new Map(),
-        appBackgroundList: [],
-        aiFloatMode: false,
-        aiHistory: [],
-        homeSwipeCount: 0,
-        powerClickCount: 0,
-        islandClickCount: 0,
-        timers: {}
-    };
-
-    // 核心配置
-    const config = {
-        DEEPSEEK_API_KEY: "sk-678240ff6e0d4951bec795b0823cbbaf",
-        DEEPSEEK_API_URL: "https://api.deepseek.com/v1/chat/completions",
-        USER_ID: Math.random().toString(36).substr(2, 8),
-        USER_NAME: "用户" + Math.random().toString(36).substr(2, 4),
-        CHAT_STORAGE_KEY: "iphone_group_chat",
-        ONLINE_STORAGE_KEY: "iphone_online_users",
-        ALBUM_STORAGE_KEY: "iphone_album",
-        ISLAND_DURATION: 3500
-    };
-
-    // 全局数据
-    let photoAlbum = JSON.parse(localStorage.getItem(config.ALBUM_STORAGE_KEY)) || [];
-
-    // APP配置表
-    const apps = {
-        相机: { icon:"📷", color:"#1C1C1E", type: "camera" },
-        相册: { icon:"🖼️", color:"#FF9500", type: "album" },
-        群聊: { icon:"👥", color:"#25D366", type: "chat" },
-        设置: { icon:"⚙️", color:"#8E8E93", type: "settings" },
-        Safari: { icon:"🌐", color:"#007AFF", type: "web", url: "https://www.baidu.com" },
-        音乐: { icon:"🎵", color:"#FF2D55", type: "web", url: "https://music.apple.com" },
-        流体云: { icon:"☁️", color:"#4fa3ff", type: "update" },
-        松果AI: { icon:"🤖", color:"#5856d6", type: "ai" },
-    };
-
-    // 壁纸列表
-    const wallpapers = [
-        { name: '深蓝', css: 'linear-gradient(135deg, #09203F, #537895)' },
-        { name: '紫黑', css: 'linear-gradient(135deg, #24243E, #302B63)' },
-        { name: '墨绿', css: 'linear-gradient(135deg, #1A2980, #26D0CE)' },
-        { name: '暖橙', css: 'linear-gradient(135deg, #FF416C, #FF4B2B)' },
-        { name: '暗黑', css: '#111' }
+    // ---------- Mock 课程数据 ----------
+    const coursesData = [
+        {
+            id: 1,
+            title: "前端开发完全指南",
+            instructor: "张雅萱",
+            description: "从零到精通：HTML5、CSS3、JavaScript、React 全栈式前端开发实战，带你构建现代化响应式应用。",
+            image: "https://picsum.photos/id/0/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["📘 模块1: HTML5 语义化与结构", "🎨 模块2: CSS3 弹性盒子与网格布局", "⚡ 模块3: JavaScript 核心与异步编程", "⚛️ 模块4: React 入门与组件化", "🚀 模块5: 项目部署与优化"],
+            reviews: [
+                { user: "刘子轩", comment: "讲得太清楚了，实战项目很有帮助！" },
+                { user: "陈思琪", comment: "作业系统完善，老师解答耐心。" }
+            ]
+        },
+        {
+            id: 2,
+            title: "Python 数据科学大师课",
+            instructor: "李骏飞",
+            description: "数据分析、可视化、机器学习基础，使用Pandas、Matplotlib、Scikit-learn解决实际问题。",
+            image: "https://picsum.photos/id/20/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["🐍 Python 基础速成", "📊 Pandas 数据清洗", "📈 Matplotlib 可视化", "🤖 机器学习入门", "🏆 综合实战: 电商分析"],
+            reviews: [
+                { user: "王敏", comment: "数据科学入门首选，案例丰富！" },
+                { user: "赵子恒", comment: "课程节奏适中，推荐！" }
+            ]
+        },
+        {
+            id: 3,
+            title: "UX/UI 设计系统精讲",
+            instructor: "周雨桐",
+            description: "用户体验设计原则，Figma 工具实战，设计思维，打造高保真原型。",
+            image: "https://picsum.photos/id/30/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["🎨 设计心理学", "🖌️ Figma 进阶操作", "📱 移动端设计规范", "🧪 可用性测试", "📁 作品集包装"],
+            reviews: [
+                { user: "林晓彤", comment: "颠覆了我对设计的认知，太实用了！" }
+            ]
+        },
+        {
+            id: 4,
+            title: "机器学习实战 (TensorFlow)",
+            instructor: "吴俊凯",
+            description: "神经网络、卷积网络、自然语言处理，TensorFlow 2.x 框架实战项目。",
+            image: "https://picsum.photos/id/40/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["🧠 神经网络基础", "🏗️ TensorFlow 搭建模型", "🖼️ CNN 图像分类", "📝 文本分类与RNN", "✨ 模型部署与优化"],
+            reviews: [
+                { user: "郑浩然", comment: "代码讲解很细致，理论结合实践" },
+                { user: "宋佳怡", comment: "课程作业有挑战性，收获满满" }
+            ]
+        },
+        {
+            id: 5,
+            title: "云计算与 DevOps 入门",
+            instructor: "孙一凡",
+            description: "Docker、K8s、CI/CD 流水线，AWS 基础，打造自动化运维技能。",
+            image: "https://picsum.photos/id/41/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["🐳 Docker 容器化", "☸️ Kubernetes 编排", "🔄 Jenkins 持续集成", "☁️ AWS 云服务", "📦 项目上线实战"],
+            reviews: []
+        },
+        {
+            id: 6,
+            title: "商业数据分析 (Excel + SQL)",
+            instructor: "陈敏华",
+            description: "Excel 高级函数，SQL 数据库查询，商业决策分析。",
+            image: "https://picsum.photos/id/24/400/240",
+            videoUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            chapters: ["📊 Excel 数据透视", "📝 SQL 多表查询", "📉 商业指标体系", "📑 报表自动化", "💡 案例：销售分析"],
+            reviews: [{ user: "徐子琪", comment: "非常实用，工作中立刻用到了" }]
+        }
     ];
 
-    // 页面初始化
-    window.addEventListener('DOMContentLoaded', () => {
-        renderHomeScreen();
-        updateDynamicIsland();
-        bindEvents();
-        initOnlineStatus();
-        initChatListener();
-        // 点击空白关闭灵动岛详情
-        document.querySelector('.iphone-screen').addEventListener('click', (e) => {
-            if(!e.target.closest('.dynamic-island')) collapseIslandDetail();
-        });
-    });
+    let currentView = 'list';      // 'list' or 'detail'
+    let currentCourse = null;
+    let searchKeyword = '';
 
-    // 事件绑定
-    function bindEvents() {
-        // 音量按键
-        document.querySelector('.volume-up').addEventListener('click', () => state.isPowerOn && console.log("音量+"));
-        document.querySelector('.volume-down').addEventListener('click', () => state.isPowerOn && console.log("音量-"));
-
-        // 电源按键逻辑
-        const powerBtn = document.querySelector('.power-button');
-        powerBtn.addEventListener('click', () => {
-            state.powerClickCount++;
-            clearTimeout(state.timers.power);
-            state.timers.power = setTimeout(() => {
-                if(state.powerClickCount === 1) singlePower();
-                else if(state.powerClickCount === 2) doublePower();
-                else if(state.powerClickCount >= 3) triplePower();
-                state.powerClickCount = 0;
-            }, 500);
-        });
-
-        // 灵动岛点击逻辑
-        const island = document.querySelector('.dynamic-island');
-        island.addEventListener('click', () => {
-            if(state.backgroundActivities.size === 0) return;
-            state.islandClickCount++;
-            clearTimeout(state.timers.island);
-            state.timers.island = setTimeout(() => {
-                if(state.islandClickCount === 1){
-                    const [app] = Array.from(state.backgroundActivities.entries()).pop();
-                    openApp(app);
-                }else{
-                    toggleIslandDetail();
-                }
-                state.islandClickCount = 0;
-            }, 350);
-        });
-
-        // Home条点击逻辑
-        const homeIndicator = document.querySelector('.home-indicator');
-        homeIndicator.addEventListener('click', () => {
-            const switcher = document.querySelector('.app-switcher');
-            // 后台界面点击返回主页
-            if(switcher.classList.contains('show')){
-                switcher.classList.remove('show');
-                return;
-            }
-            // APP内点击返回主页
-            if(state.activeApp) {
-                closeAppToHome();
-            } else {
-                // 主页双击打开后台
-                state.homeSwipeCount++;
-                clearTimeout(state.timers.homeSwipe);
-                state.timers.homeSwipe = setTimeout(() => {
-                    if(state.homeSwipeCount >= 2) openSwitcher();
-                    state.homeSwipeCount = 0;
-                }, 300);
-            }
-        });
-
-        // 悬浮AI发送事件
-        const floatInput = document.querySelector('.ai-float-input');
-        const floatSendBtn = document.querySelector('.ai-float-send');
-        const sendFloatMsg = () => {
-            const txt = floatInput.value.trim();
-            if(!txt) return;
-            handleAIInput(txt);
-            floatInput.value='';
-        };
-        floatInput.addEventListener('keydown',(e)=> e.key==='Enter' && sendFloatMsg());
-        floatSendBtn.addEventListener('click', sendFloatMsg);
+    // 辅助函数: 获取过滤后的课程列表
+    function getFilteredCourses() {
+        if (!searchKeyword.trim()) return [...coursesData];
+        const kw = searchKeyword.trim().toLowerCase();
+        return coursesData.filter(c => c.title.toLowerCase().includes(kw) || c.instructor.toLowerCase().includes(kw));
     }
 
-    // 电源核心逻辑
-    function singlePower(){ 
-        if(!state.isPowerOn) return; 
-        state.isScreenOn = !state.isScreenOn; 
-        updateScreen(); 
-    }
-    function doublePower(){
-        state.isPowerOn = !state.isPowerOn;
-        state.isScreenOn = state.isPowerOn;
-        updateScreen();
-        if(!state.isPowerOn){
-            state.activeApp = null;
-            state.backgroundActivities.clear();
-            state.appBackgroundList = [];
-            closeFloatAI();
-        }
-    }
-    function triplePower(){
-        if(!state.isPowerOn || !state.isScreenOn) return;
-        state.aiFloatMode = true;
-        document.querySelector('.ai-float-dialog').classList.add('show');
-    }
-
-    // 屏幕状态更新
-    function updateScreen(){
-        const scr = document.querySelector('.iphone-screen');
-        const home = document.querySelector('.home-screen');
-        if(state.isScreenOn){
-            scr.classList.remove('screen-off');
-            if(!state.activeApp) home.classList.remove('hidden');
-        }else{
-            scr.classList.add('screen-off');
-            home.classList.add('hidden');
-            document.querySelector('.app-container').classList.add('hidden');
-            document.querySelector('.app-switcher').classList.remove('show');
-            closeFloatAI();
-        }
-    }
-
-    function closeFloatAI(){
-        state.aiFloatMode = false;
-        document.querySelector('.ai-float-dialog').classList.remove('show');
-    }
-
-    // 渲染主屏幕
-    function renderHomeScreen(){
-        const grid = document.querySelector('.app-grid');
-        grid.innerHTML = '';
-        Object.entries(apps).forEach(([name,info])=>{
-            const el = document.createElement('div');
-            el.className = 'app-icon';
-            el.innerHTML = `
-                <div class="app-icon-emoji glass" style="background:${info.color}">${info.icon}</div>
-                <div class="app-name">${name}</div>
-            `;
-            el.onclick = () => openApp(name);
-            grid.appendChild(el);
-        });
-    }
-
-    // 打开APP核心逻辑
-    function openApp(name){
-        if(!state.isPowerOn || !state.isScreenOn || !apps[name]) return;
-        state.activeApp = name;
-        state.backgroundActivities.delete(name);
-        updateDynamicIsland();
-        closeFloatAI();
-
-        // 隐藏其他界面
-        document.querySelector('.home-screen').classList.add('hidden');
-        document.querySelector('.app-switcher').classList.remove('show');
-        const cont = document.querySelector('.app-container');
-        cont.classList.remove('hidden');
-        const info = apps[name];
-
-        // 基础APP头
-        const appHeader = `
-            <div class="app-header" style="background:${info.color}">
-                <div class="app-title">${name}</div>
-            </div>
-        `;
-
-        // 按APP类型渲染内容
-        switch(info.type){
-            case "web":
-                cont.innerHTML = appHeader + `<div class="app-content"><iframe src="${info.url}"></iframe></div>`;
-                break;
-            case "update":
-                cont.innerHTML = appHeader + `
-                    <div class="app-content" style="padding:20px;">
-                        <div style="font-size:18px;font-weight:bold;">更新中</div>
-                        <div style="margin-top:8px;">正在下载资源包</div>
-                        <div class="progress-bar"><div class="progress-fill"></div></div>
-                        <div style="margin-top:4px;font-size:12px;color:#666">68%</div>
-                    </div>
-                `;
-                break;
-            case "settings":
-                cont.innerHTML = appHeader + `
-                    <div class="app-content">
-                        <div class="settings-list">
-                            <div class="settings-row"><div>飞行模式</div><div class="settings-switch"></div></div>
-                            <div class="settings-row"><div>Wi‑Fi</div><div class="settings-switch on"></div></div>
-                            <div class="settings-row"><div>蓝牙</div><div class="settings-switch on"></div></div>
-                            <div class="settings-row"><div>蜂窝网络</div><div class="settings-switch"></div></div>
-                            <div class="settings-row"><div>声音</div><div class="settings-switch on"></div></div>
-                            <div class="settings-row"><div>亮度自动</div><div class="settings-switch on"></div></div>
-                            <div class="settings-row"><div>相机权限</div><div class="settings-switch on"></div></div>
-                            <div style="padding:12px 0;border-bottom:1px solid #eee;">
-                                <div style="margin-bottom:8px;">壁纸</div>
-                                <div style="display:flex;flex-wrap:wrap;" id="wallpaper-list"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                // 初始化壁纸选择器
-                setTimeout(()=>{
-                    const list = document.getElementById('wallpaper-list');
-                    wallpapers.forEach((w)=>{
-                        const div = document.createElement('div');
-                        div.className = 'wallpaper-option';
-                        div.style.background = w.css;
-                        div.onclick = () => {
-                            document.documentElement.style.setProperty('--home-wallpaper',w.css);
-                            document.querySelectorAll('.wallpaper-option').forEach(o=>o.classList.remove('active'));
-                            div.classList.add('active');
-                        };
-                        list.appendChild(div);
-                    });
-                    document.querySelectorAll('.settings-switch').forEach(s=>{
-                        s.onclick = () => s.classList.toggle('on');
-                    });
-                },0);
-                break;
-            case "ai":
-                cont.innerHTML = appHeader + `
-                    <div class="app-content">
-                        <div style="height:100%;display:flex;flex-direction:column;padding:16px;">
-                            <div class="ai-chat-history" id="ai-full-chat"></div>
-                            <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
-                                <input style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #ddd;" placeholder="输入问题..." id="ai-full-input">
-                                <button id="ai-full-send" class="glass" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#000;font-size:16px;cursor:pointer;">↑</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                // 初始化AI聊天
-                setTimeout(()=>{
-                    const chatBox = document.getElementById('ai-full-chat');
-                    const input = document.getElementById('ai-full-input');
-                    const sendBtn = document.getElementById('ai-full-send');
-                    // 渲染历史记录
-                    state.aiHistory.forEach(item=>{
-                        chatBox.innerHTML += `<div class="ai-msg ${item.role}">${item.text}</div>`;
-                    });
-                    // 发送函数
-                    const sendMsg = () => {
-                        const t = input.value.trim();
-                        if(!t) return;
-                        handleAIInput(t);
-                        input.value = '';
-                    };
-                    input.addEventListener('keydown', e => e.key==='Enter' && sendMsg());
-                    sendBtn.addEventListener('click', sendMsg);
-                },0);
-                break;
-            case "camera":
-                cont.innerHTML = `
-                    <div class="app-content" style="position:relative;background:#000;">
-                        <button class="camera-back-btn">×</button>
-                        <video class="camera-preview" autoplay muted playsinline></video>
-                        <div class="camera-controls">
-                            <button class="shutter-btn"></button>
-                        </div>
-                    </div>
-                `;
-                initCamera();
-                break;
-            case "album":
-                cont.innerHTML = appHeader + `
-                    <div class="app-content">
-                        <div class="album-grid" id="album-grid"></div>
-                        <div class="photo-preview" id="photo-preview">
-                            <img id="preview-img" src="" alt="">
-                        </div>
-                    </div>
-                `;
-                renderAlbum();
-                break;
-            case "chat":
-                cont.innerHTML = `
-                    <div class="chat-container">
-                        <div class="chat-header">
-                            <span>公共群聊</span>
-                            <span class="online-count" id="online-count">在线：1人</span>
-                        </div>
-                        <div class="chat-messages" id="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <button class="chat-photo-btn glass">📷</button>
-                            <input class="chat-input" id="chat-input" placeholder="输入消息...">
-                            <button class="chat-send-btn">发送</button>
-                        </div>
-                        <div class="photo-selector" id="photo-selector">
-                            <div class="photo-selector-grid" id="photo-selector-grid"></div>
-                        </div>
-                    </div>
-                `;
-                initChatApp();
-                break;
-            default:
-                cont.innerHTML = appHeader + `
-                    <div class="app-content" style="display:flex;align-items:center;justify-content:center;">
-                        <div style="text-align:center;">
-                            <div style="font-size:60px;">${info.icon}</div>
-                            <div style="font-size:20px;margin-top:12px;">${name}</div>
-                        </div>
-                    </div>
-                `;
-        }
-    }
-
-    // 关闭APP返回主页
-    function closeAppToHome(){
-        if(!state.activeApp) return;
-        const name = state.activeApp;
-        const info = apps[name];
-        
-        // 加入后台列表
-        if(!state.appBackgroundList.includes(name)) state.appBackgroundList.push(name);
-        
-        // 上岛显示
-        state.backgroundActivities.set(name,{
-            title:name,
-            content:info.type==="update"?"更新中 68%":"后台运行"
-        });
-        updateDynamicIsland();
-
-        // 定时下岛
-        clearTimeout(state.timers.islandAutoClose);
-        state.timers.islandAutoClose = setTimeout(() => {
-            state.backgroundActivities.delete(name);
-            updateDynamicIsland();
-        }, config.ISLAND_DURATION);
-
-        // 重置状态
-        state.activeApp = null;
-        document.querySelector('.app-container').classList.add('hidden');
-        document.querySelector('.home-screen').classList.remove('hidden');
-    }
-
-    // 灵动岛核心逻辑
-    function updateDynamicIsland(){
-        const island = document.querySelector('.dynamic-island');
-        const content = document.querySelector('.island-content');
-        content.innerHTML = '';
-        
-        if(state.backgroundActivities.size === 0){
-            island.classList.remove('expanded','detailed');
+    // 渲染课程列表 (带搜索)
+    function renderCourseList() {
+        const filtered = getFilteredCourses();
+        const container = document.getElementById('coursesGridContainer');
+        const countSpan = document.getElementById('courseCount');
+        countSpan.innerText = `${filtered.length} 门课程`;
+        if (filtered.length === 0) {
+            container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem;">😢 没有找到相关课程，试试其他关键词～</div>`;
             return;
         }
-
-        const [name,act] = Array.from(state.backgroundActivities.entries()).pop();
-        island.classList.add('expanded');
-        content.innerHTML = `
-            <div class="island-app-icon">${apps[name].icon}</div>
-            <div class="island-app-info">
-                <div class="island-app-title">${act.title}</div>
-                <div class="island-app-desc">${act.content}</div>
-            </div>
-        `;
-    }
-    function toggleIslandDetail(){
-        const island = document.querySelector('.dynamic-island');
-        island.classList.toggle('detailed');
-        island.classList.contains('detailed') ? autoCollapseIsland() : clearTimeout(state.timers.islandDetail);
-    }
-    function collapseIslandDetail(){
-        document.querySelector('.dynamic-island').classList.remove('detailed');
-        clearTimeout(state.timers.islandDetail);
-    }
-    function autoCollapseIsland(){
-        clearTimeout(state.timers.islandDetail);
-        state.timers.islandDetail = setTimeout(()=>collapseIslandDetail(),10000);
-    }
-
-    // 后台多任务逻辑
-    function openSwitcher(){
-        const switcher = document.querySelector('.app-switcher');
-        const grid = document.querySelector('.switcher-grid');
-        grid.innerHTML = '';
-        
-        state.appBackgroundList.forEach(name=>{
-            const card = document.createElement('div');
-            card.className = 'switcher-card';
-            card.innerHTML = `
-                <div class="switcher-close" data-name="${name}">×</div>
-                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${apps[name].color}">
-                    <div style="font-size:40px;color:#fff;">${apps[name].icon}</div>
+        container.innerHTML = filtered.map(course => `
+            <div class="course-card" data-id="${course.id}">
+                <img class="course-img" src="${course.image}" alt="${course.title}" loading="lazy">
+                <div class="course-info">
+                    <div class="course-title">${escapeHtml(course.title)}</div>
+                    <div class="course-instructor"><i class="fas fa-user-graduate"></i> ${escapeHtml(course.instructor)}</div>
+                    <div class="course-desc">${escapeHtml(course.description.substring(0, 80))}...</div>
+                    <div class="course-meta">
+                        <span><i class="fas fa-play-circle"></i> ${course.chapters.length} 章节</span>
+                        <span><i class="fas fa-star" style="color:#fbbf24;"></i> 4.8</span>
+                    </div>
                 </div>
-            `;
-            card.onclick = () => {openApp(name);switcher.classList.remove('show');};
-            grid.appendChild(card);
-        });
-
-        switcher.classList.add('show');
-        // 关闭后台APP
-        document.querySelectorAll('.switcher-close').forEach(btn=>{
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                const name = btn.dataset.name;
-                state.appBackgroundList = state.appBackgroundList.filter(n=>n!==name);
-                state.backgroundActivities.delete(name);
-                updateDynamicIsland();
-                openSwitcher();
-            };
-        });
-    }
-
-    // AI核心逻辑
-    function addAIHistory(text,role){
-        state.aiHistory.push({text,role});
-        if(state.aiHistory.length>50) state.aiHistory.shift();
-        
-        // 悬浮模式上岛
-        if(state.aiFloatMode){
-            const island = document.querySelector('.dynamic-island');
-            island.classList.add('detailed');
-            state.backgroundActivities.set("松果AI",{title:"松果AI",content:text.slice(0,12)+"..."});
-            updateDynamicIsland();
-            autoCollapseIsland();
-        }
-
-        // 同步到AI聊天框
-        const chatBox = document.getElementById('ai-full-chat');
-        if(chatBox) chatBox.innerHTML += `<div class="ai-msg ${role}">${text}</div>`;
-    }
-
-    function handleAIInput(text){
-        addAIHistory(text,'user');
-        // 优先处理打开APP指令
-        const openReg = /^打开(.+?)$/;
-        const match = text.match(openReg);
-        if(match) {
-            const appName = match[1].trim();
-            if(apps[appName]) {
-                setTimeout(()=>{
-                    addAIHistory(`已为您打开${appName}`,'ai');
-                    openApp(appName);
-                },500);
-            } else {
-                setTimeout(()=>addAIHistory(`抱歉，没有找到${appName}这个APP`,'ai'),500);
-            }
-            return;
-        }
-        // 调用Deepseek API
-        callDeepseekAPI(text);
-    }
-
-    // Deepseek API调用
-    async function callDeepseekAPI(userInput){
-        const isFloat = state.aiFloatMode;
-        if(!isFloat) addAIHistory('正在思考...','ai');
-        
-        try {
-            const response = await fetch(config.DEEPSEEK_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${config.DEEPSEEK_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'system', content: '你是松果AI，一款内置在iPhone模拟器中的智能助手，回答简洁友好，符合手机助手定位' },
-                        { role: 'user', content: userInput }
-                    ],
-                    stream: false,
-                    temperature: 0.7
-                })
+            </div>
+        `).join('');
+        // 绑定卡片点击事件
+        document.querySelectorAll('.course-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const id = parseInt(card.getAttribute('data-id'));
+                const course = coursesData.find(c => c.id === id);
+                if (course) showCourseDetail(course);
             });
-
-            if(!response.ok) throw new Error('API调用失败');
-            const data = await response.json();
-            const reply = data.choices[0].message.content;
-
-            if(!isFloat){
-                const chatBox = document.getElementById('ai-full-chat');
-                chatBox.lastChild.remove();
-            }
-            addAIHistory(reply,'ai');
-
-        } catch (error) {
-            const errMsg = `抱歉，调用失败：${error.message}`;
-            if(!isFloat){
-                const chatBox = document.getElementById('ai-full-chat');
-                chatBox.lastChild.remove();
-            }
-            addAIHistory(errMsg,'ai');
-        }
+        });
     }
 
-    // 相机初始化（权限+拍照+保存）
-    function initCamera(){
-        const video = document.querySelector('.camera-preview');
-        const shutterBtn = document.querySelector('.shutter-btn');
-        const backBtn = document.querySelector('.camera-back-btn');
-        let stream = null;
+    // 简单防XSS
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
 
-        // 申请相机权限并启动
-        async function startCamera(){
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' },
-                    audio: false
+    // 展示课程详情
+    function showCourseDetail(course) {
+        currentCourse = course;
+        currentView = 'detail';
+        document.getElementById('listView').classList.add('hide');
+        const detailDiv = document.getElementById('detailView');
+        detailDiv.classList.remove('hide');
+        
+        // 构建相关课程（除去当前课程）
+        const related = coursesData.filter(c => c.id !== course.id).slice(0, 3);
+        
+        // 渲染详情html
+        detailDiv.innerHTML = `
+            <div class="detail-container">
+                <button class="back-btn" id="backToListBtn"><i class="fas fa-arrow-left"></i> 返回课程列表</button>
+                <div class="video-wrapper">
+                    <video controls poster="${course.image}">
+                        <source src="${course.videoUrl}" type="video/mp4">
+                        您的浏览器不支持 video 标签。
+                    </video>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap;">
+                    <div>
+                        <h1 class="detail-title">${escapeHtml(course.title)}</h1>
+                        <div class="detail-instructor"><i class="fas fa-chalkboard-user"></i> 讲师：${escapeHtml(course.instructor)}</div>
+                    </div>
+                    <button class="enroll-btn" id="enrollCourseBtn"><i class="fas fa-book-open"></i> 立即加入学习</button>
+                </div>
+                <div class="detail-description">
+                    <i class="fas fa-align-left"></i> ${escapeHtml(course.description)}
+                </div>
+                <div class="sections">
+                    <h3><i class="fas fa-list-ul"></i> 课程大纲</h3>
+                    <ul class="chapter-list">
+                        ${course.chapters.map(ch => `<li><i class="fas fa-circle-play"></i> ${escapeHtml(ch)}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="reviews">
+                    <h3><i class="fas fa-comment-dots"></i> 学员评价</h3>
+                    <div id="reviewsContainer">
+                        ${course.reviews.length ? course.reviews.map(r => `
+                            <div class="review-item">
+                                <div class="review-user"><i class="fas fa-user-circle"></i> ${escapeHtml(r.user)}</div>
+                                <div>${escapeHtml(r.comment)}</div>
+                            </div>
+                        `).join('') : '<p style="color:#64748b;">暂无评价，成为第一个留言的同学～</p>'}
+                    </div>
+                    <div class="add-review">
+                        <input type="text" id="newReviewInput" placeholder="写下你的评价...">
+                        <button id="submitReviewBtn">发表</button>
+                    </div>
+                </div>
+                <div class="related-courses">
+                    <h3><i class="fas fa-thumbs-up"></i> 相关推荐</h3>
+                    <div class="related-grid" id="relatedGrid"></div>
+                </div>
+            </div>
+        `;
+        
+        // 填充相关课程
+        const relatedGrid = document.getElementById('relatedGrid');
+        if(related.length) {
+            relatedGrid.innerHTML = related.map(rel => `
+                <div class="related-card" data-relid="${rel.id}">
+                    <strong>${escapeHtml(rel.title)}</strong>
+                    <div style="font-size:0.75rem; color:#475569;">${escapeHtml(rel.instructor)}</div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.related-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const relId = parseInt(card.getAttribute('data-relid'));
+                    const relCourse = coursesData.find(c => c.id === relId);
+                    if(relCourse) showCourseDetail(relCourse);
                 });
-                video.srcObject = stream;
-            } catch (error) {
-                alert('相机权限申请失败，请在浏览器设置中允许相机权限，刷新页面重试');
-            }
-        }
-
-        // 拍照逻辑
-        shutterBtn.addEventListener('click', () => {
-            if(!stream) return;
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            const photoUrl = canvas.toDataURL('image/jpeg');
-            
-            // 保存到相册
-            photoAlbum.unshift(photoUrl);
-            localStorage.setItem(config.ALBUM_STORAGE_KEY, JSON.stringify(photoAlbum));
-            
-            // 拍照反馈
-            video.style.filter = 'brightness(2)';
-            setTimeout(() => video.style.filter = 'none', 100);
-        });
-
-        // 返回按钮
-        backBtn.addEventListener('click', () => {
-            if(stream) stream.getTracks().forEach(track => track.stop());
-            closeAppToHome();
-        });
-
-        startCamera();
-    }
-
-    // 渲染相册
-    function renderAlbum(){
-        const grid = document.getElementById('album-grid');
-        const preview = document.getElementById('photo-preview');
-        const previewImg = document.getElementById('preview-img');
-        grid.innerHTML = '';
-
-        if(photoAlbum.length === 0){
-            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:50px 0;color:#666;">暂无照片</div>';
-            return;
-        }
-
-        photoAlbum.forEach(photo => {
-            const img = document.createElement('img');
-            img.src = photo;
-            img.className = 'album-photo';
-            img.onclick = () => {
-                previewImg.src = photo;
-                preview.classList.add('show');
-            };
-            grid.appendChild(img);
-        });
-
-        preview.onclick = () => preview.classList.remove('show');
-    }
-
-    // 群聊APP初始化（修复双bug）
-    function initChatApp(){
-        const msgBox = document.getElementById('chat-messages');
-        const input = document.getElementById('chat-input');
-        const sendBtn = document.querySelector('.chat-send-btn');
-        const photoBtn = document.querySelector('.chat-photo-btn');
-        const photoSelector = document.getElementById('photo-selector');
-        const photoGrid = document.getElementById('photo-selector-grid');
-        const onlineCountEl = document.getElementById('online-count');
-
-        // 渲染聊天记录
-        window.renderChatMessages = function(){
-            const messages = JSON.parse(localStorage.getItem(config.CHAT_STORAGE_KEY)) || [];
-            msgBox.innerHTML = '';
-            messages.forEach(msg => {
-                const isSelf = msg.userId === config.USER_ID;
-                const msgEl = document.createElement('div');
-                msgEl.className = `chat-msg ${isSelf ? 'self' : 'other'}`;
-                msgEl.innerHTML = `
-                    <div class="chat-msg-name">${isSelf ? '我' : msg.userName}</div>
-                    <div class="chat-msg-content">${msg.content}</div>
-                `;
-                msgBox.appendChild(msgEl);
             });
-            msgBox.scrollTop = msgBox.scrollHeight;
-        };
-
-        // 更新在线人数
-        window.updateOnlineCount = function(){
-            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
-            const count = Object.keys(onlineUsers).length;
-            onlineCountEl.innerText = `在线：${count}人`;
-        };
-
-        // 发送消息
-        function sendMessage(content){
-            if(!content.trim()) return;
-            const messages = JSON.parse(localStorage.getItem(config.CHAT_STORAGE_KEY)) || [];
-            const newMsg = {
-                userId: config.USER_ID,
-                userName: config.USER_NAME,
-                content: content,
-                time: Date.now()
-            };
-            messages.push(newMsg);
-            if(messages.length>200) messages.shift();
-            localStorage.setItem(config.CHAT_STORAGE_KEY, JSON.stringify(messages));
-            input.value = '';
-            renderChatMessages();
+        } else {
+            relatedGrid.innerHTML = '<p>暂无更多推荐</p>';
         }
-
-        // 发送事件绑定
-        sendBtn.onclick = () => sendMessage(input.value);
-        input.onkeydown = e => e.key==='Enter' && sendMessage(input.value);
-
-        // 照片选择器
-        photoBtn.onclick = () => {
-            photoSelector.classList.toggle('show');
-            photoGrid.innerHTML = '';
-            if(photoAlbum.length === 0){
-                photoGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:10px;color:#666;">暂无照片</div>';
-                return;
-            }
-            photoAlbum.forEach(photo => {
-                const img = document.createElement('img');
-                img.src = photo;
-                img.style.width = '100%';
-                img.style.aspectRatio = '1/1';
-                img.style.objectFit = 'cover';
-                img.onclick = () => {
-                    sendMessage(`<img src="${photo}" alt="照片">`);
-                    photoSelector.classList.remove('show');
-                };
-                photoGrid.appendChild(img);
+        
+        // 绑定详情页内部事件
+        document.getElementById('backToListBtn').addEventListener('click', () => {
+            backToCourseList();
+        });
+        document.getElementById('enrollCourseBtn').addEventListener('click', () => {
+            alert(`✨ 您已成功加入《${course.title}》课程！(演示模式，即将开启学习之旅)`);
+        });
+        // 发表评论模拟
+        const submitReview = document.getElementById('submitReviewBtn');
+        const reviewInput = document.getElementById('newReviewInput');
+        if(submitReview) {
+            submitReview.addEventListener('click', () => {
+                const comment = reviewInput.value.trim();
+                if(!comment) { alert("请输入评论内容"); return; }
+                // 模拟添加到当前课程评论并重新渲染
+                if(!currentCourse.reviews) currentCourse.reviews = [];
+                currentCourse.reviews.push({ user: "当前学员", comment: comment });
+                // 重新渲染详情（刷新评论）
+                showCourseDetail(currentCourse);
+                alert("感谢您的评价！(演示添加成功)");
             });
-        };
-
-        // 初始化渲染
-        renderChatMessages();
-        updateOnlineCount();
-    }
-
-    // 在线状态管理
-    function initOnlineStatus(){
-        function updateOnline(){
-            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
-            onlineUsers[config.USER_ID] = Date.now();
-            // 清理30秒离线用户
-            Object.keys(onlineUsers).forEach(id => {
-                if(Date.now() - onlineUsers[id] > 30000) delete onlineUsers[id];
-            });
-            localStorage.setItem(config.ONLINE_STORAGE_KEY, JSON.stringify(onlineUsers));
-            // 实时更新在线人数
-            if(state.activeApp === '群聊' && window.updateOnlineCount) window.updateOnlineCount();
         }
-        // 心跳包
-        updateOnline();
-        setInterval(updateOnline, 10000);
-        // 页面卸载清理
-        window.addEventListener('beforeunload', () => {
-            const onlineUsers = JSON.parse(localStorage.getItem(config.ONLINE_STORAGE_KEY)) || {};
-            delete onlineUsers[config.USER_ID];
-            localStorage.setItem(config.ONLINE_STORAGE_KEY, JSON.stringify(onlineUsers));
-        });
     }
-
-    // 群聊消息实时同步（修复跨标签页看不到消息bug）
-    function initChatListener(){
-        // 监听storage变化，实时同步消息和在线人数
-        window.addEventListener('storage', (e) => {
-            if(e.key === config.CHAT_STORAGE_KEY && state.activeApp === '群聊' && window.renderChatMessages){
-                window.renderChatMessages();
-            }
-            if(e.key === config.ONLINE_STORAGE_KEY && state.activeApp === '群聊' && window.updateOnlineCount){
-                window.updateOnlineCount();
-            }
-        });
+    
+    function backToCourseList() {
+        currentView = 'list';
+        document.getElementById('detailView').classList.add('hide');
+        document.getElementById('listView').classList.remove('hide');
+        // 刷新列表保持搜索状态
+        renderCourseList();
+        // 重置播放器状态（可选）
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    
+    // 搜索输入监听
+    function initSearch() {
+        const searchInput = document.getElementById('searchInput');
+        if(searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                searchKeyword = e.target.value;
+                if(currentView === 'list') renderCourseList();
+            });
+        }
+    }
+    
+    // 登录模态框逻辑
+    function initModal() {
+        const modal = document.getElementById('authModal');
+        const openLogin = document.getElementById('openLoginBtn');
+        const openSignup = document.getElementById('openSignupBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+        const doLogin = document.getElementById('doLoginBtn');
+        
+        function openModal() { modal.style.display = 'flex'; }
+        function closeModal() { modal.style.display = 'none'; }
+        openLogin.onclick = openModal;
+        openSignup.onclick = openModal;
+        closeBtn.onclick = closeModal;
+        window.onclick = (e) => { if(e.target === modal) closeModal(); };
+        doLogin.onclick = () => {
+            const username = document.getElementById('loginUser').value;
+            if(username.trim()) alert(`🎉 演示登录成功！欢迎 ${username}，您可以畅享所有课程。`);
+            else alert("请输入用户名/邮箱");
+            closeModal();
+        };
+    }
+    
+    // 导航栏功能
+    function initNavigation() {
+        const navHome = document.getElementById('navHome');
+        const navCourses = document.getElementById('navCourses');
+        const navAbout = document.getElementById('navAbout');
+        
+        const scrollToTopAndReset = () => {
+            if(currentView !== 'list') backToCourseList();
+            else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            searchKeyword = '';
+            const searchInput = document.getElementById('searchInput');
+            if(searchInput) searchInput.value = '';
+            renderCourseList();
+        };
+        
+        navHome.onclick = (e) => {
+            e.preventDefault();
+            scrollToTopAndReset();
+            setActiveNav(navHome);
+        };
+        navCourses.onclick = (e) => {
+            e.preventDefault();
+            scrollToTopAndReset();
+            setActiveNav(navCourses);
+        };
+        navAbout.onclick = (e) => {
+            e.preventDefault();
+            alert("📖 EduLearn 成立于2025年，致力于提供高质量在线教育，汇集全球顶尖教师，让每个人都能享受优质资源。");
+            setActiveNav(navAbout);
+        };
+        
+        function setActiveNav(active) {
+            [navHome, navCourses, navAbout].forEach(link => link.classList.remove('active'));
+            active.classList.add('active');
+        }
+    }
+    
+    // 启动
+    function init() {
+        renderCourseList();
+        initSearch();
+        initModal();
+        initNavigation();
+        // 默认列表视图，隐藏详情
+        document.getElementById('detailView').classList.add('hide');
+        document.getElementById('listView').classList.remove('hide');
+        currentView = 'list';
+    }
+    
+    init();
 </script>
 </body>
 </html>
