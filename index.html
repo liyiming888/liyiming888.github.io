@@ -2,879 +2,753 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>网课空间站 | 可切换服务器</title>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>松果AI | 智能对话与视觉感知</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(145deg, #f6f9fc 0%, #eef2f5 100%);
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 20% 30%, rgba(30,35,48,1) 0%, rgba(15,18,28,1) 100%);
             min-height: 100vh;
-            color: #1a2c3e;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-radius: 2rem;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255,255,255,0.6);
-        }
-        .landing-grid {
             display: flex;
-            flex-wrap: wrap;
-            gap: 2rem;
             justify-content: center;
-            align-items: center;
-            min-height: 70vh;
+            padding: 20px;
+            position: relative;
         }
-        .entry-card {
-            flex: 1;
-            min-width: 280px;
-            max-width: 420px;
-            padding: 2rem 1.5rem;
-            text-align: center;
-            cursor: pointer;
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(100,180,250,0.15), rgba(255,100,150,0.05) 60%, transparent);
+            pointer-events: none;
+            z-index: 0;
         }
-        .entry-icon { font-size: 3rem; margin-bottom: 1rem; }
-        .entry-title {
-            font-size: 1.6rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #1f6e8c, #2c3e66);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-        .entry-desc { color: #5b6e8c; margin-bottom: 1.5rem; }
-        .join-input-group {
+        .app-container {
+            width: 1400px;
+            max-width: 98vw;
+            height: 90vh;
+            background: rgba(20,24,36,0.45);
+            backdrop-filter: blur(18px);
+            border-radius: 48px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
             display: flex;
-            gap: 0.5rem;
-            background: #fff;
-            border-radius: 60px;
-            padding: 0.2rem;
-            border: 1px solid #e2e9f2;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
         }
-        .join-input-group input {
-            flex: 1;
-            border: none;
-            padding: 0.7rem 1rem;
-            border-radius: 60px;
-            outline: none;
-            font-family: monospace;
+        .app-container::after {
+            content: '';
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(255,255,240,0.2) 0%, rgba(255,255,255,0) 70%);
+            pointer-events: none;
         }
-        .join-btn {
-            background: #1f6e8c;
-            color: white;
-            border: none;
-            padding: 0 1.2rem;
-            border-radius: 60px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .room-header {
+        .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
-        .room-key-badge {
-            background: #1e2f3f;
-            color: #eef4ff;
-            padding: 0.3rem 1rem;
-            border-radius: 40px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .leave-btn {
-            background: #e74c3c20;
-            border: 1px solid #e74c3c40;
-            color: #c0392b;
-            padding: 0.4rem 1rem;
-            border-radius: 40px;
-            cursor: pointer;
-        }
-        .mode-switch {
-            background: rgba(255,255,255,0.6);
+            padding: 16px 32px;
+            background: rgba(10,14,23,0.5);
             backdrop-filter: blur(8px);
-            border-radius: 60px;
-            padding: 0.2rem;
-            display: inline-flex;
-            margin: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        .mode-option {
-            padding: 0.3rem 1rem;
+        .logo-area { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .logo-icon { font-size: 32px; filter: drop-shadow(0 0 8px rgba(255,180,80,0.6)); animation: softPulse 2s infinite alternate; }
+        @keyframes softPulse { 0% { text-shadow: 0 0 2px rgba(255,200,100,0.5); } 100% { text-shadow: 0 0 12px rgba(255,160,60,0.9); } }
+        .logo-text { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #FFF8E7, #FFD966); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .nav-links { display: flex; gap: 24px; margin-left: 40px; }
+        .nav-link { color: rgba(255,240,200,0.8); text-decoration: none; font-weight: 500; transition: 0.2s; cursor: pointer; font-size: 1rem; }
+        .nav-link.active { color: #FFD966; border-bottom: 2px solid #FFD966; padding-bottom: 4px; }
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 12px;
             border-radius: 40px;
-            cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            color: #FFE6B3;
+            margin-left: auto;
         }
-        .mode-option.active {
-            background: #1f6e8c;
-            color: white;
+        .weather-widget i { font-size: 1rem; }
+        #refreshWeatherBtn { cursor: pointer; transition: transform 0.2s; }
+        #refreshWeatherBtn:hover { transform: rotate(30deg); }
+        .user-area { display: flex; align-items: center; gap: 16px; margin-left: 16px; }
+        .btn-glass {
+            background: rgba(255,255,245,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.25);
+            padding: 8px 20px; border-radius: 40px; font-weight: 500; color: white; cursor: pointer; transition: 0.25s ease;
         }
-        .video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
+        .btn-glass:hover { background: rgba(255,255,245,0.3); transform: scale(1.02); border-color: rgba(255,215,130,0.6); }
+        .user-greeting { background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 60px; font-size: 0.85rem; font-weight: 500; color: #FFE6B3; }
+        .main-content { flex: 1; display: flex; overflow: hidden; }
+        .chat-panel { flex: 1; display: flex; flex-direction: column; padding: 20px 28px; overflow: hidden; }
+        .messages-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 8px; }
+        .message { display: flex; gap: 14px; animation: fadeSlideUp 0.3s ease; }
+        .message-avatar { width: 40px; height: 40px; background: rgba(255,215,130,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); border: 1px solid rgba(255,215,130,0.4); }
+        .message-content { max-width: 70%; background: rgba(30,35,48,0.7); backdrop-filter: blur(12px); padding: 12px 18px; border-radius: 24px; border-bottom-left-radius: 6px; color: #f0f3fa; font-size: 0.95rem; line-height: 1.5; border: 1px solid rgba(255,255,210,0.15); }
+        .user-message { flex-direction: row-reverse; }
+        .user-message .message-content { background: rgba(255,215,130,0.25); border-bottom-right-radius: 6px; border-bottom-left-radius: 24px; color: #fff7e8; }
+        .input-area {
+            margin-top: 20px; background: rgba(12,16,26,0.6); backdrop-filter: blur(20px); border-radius: 60px;
+            padding: 8px 12px 8px 24px; display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,210,0.25);
         }
-        .video-card {
-            background: #11181c;
-            border-radius: 1.2rem;
-            overflow: hidden;
-            aspect-ratio: 4 / 3;
+        .input-area input { flex: 1; background: transparent; border: none; color: white; font-size: 1rem; padding: 14px 0; outline: none; }
+        .input-area input::placeholder { color: rgba(255,240,200,0.5); }
+        .btn-icon {
+            background: rgba(255,210,100,0.2); border: none; width: 44px; height: 44px; border-radius: 50%; color: #FFE1A0;
+            font-size: 1.3rem; cursor: pointer; transition: 0.2s; backdrop-filter: blur(8px);
+        }
+        .btn-icon:hover { background: rgba(255,210,100,0.6); color: #1e1a2f; transform: scale(1.05); }
+        .send-btn { background: linear-gradient(135deg, #FFD966, #FFB347); color: #1e1a2f; box-shadow: 0 2px 10px rgba(255,180,70,0.3); }
+        .profile-panel {
+            width: 320px; background: rgba(20,24,36,0.6); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 28px 20px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto;
+        }
+        .profile-avatar { text-align: center; }
+        .profile-avatar img { width: 100px; height: 100px; border-radius: 50%; border: 2px solid #FFD966; background: #1e1a2f; object-fit: cover; }
+        .profile-email { text-align: center; color: #FFE6B3; font-weight: 500; margin-top: 12px; word-break: break-all; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .setting-label { color: white; font-weight: 500; }
+        .toggle-switch { width: 44px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 40px; position: relative; cursor: pointer; transition: 0.2s; }
+        .toggle-switch.active { background: #FFD966; }
+        .toggle-switch::after { content: ''; width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
+        .toggle-switch.active::after { left: 22px; }
+        select.model-select { background: rgba(0,0,0,0.5); border: 1px solid #FFD966; color: white; padding: 8px 12px; border-radius: 30px; font-size: 0.9rem; cursor: pointer; }
+        .hidden { display: none; }
+        .modal {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center; z-index: 1500;
+        }
+        .modal-card { background: rgba(25,30,45,0.95); backdrop-filter: blur(32px); border-radius: 48px; padding: 32px; width: 420px; border: 1px solid rgba(255,215,130,0.4); color: white; }
+        .modal-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .tab { padding: 8px 16px; cursor: pointer; border-radius: 40px; transition: 0.2s; }
+        .tab.active { background: #FFD966; color: #1e1a2f; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal-input { width:100%; background:rgba(255,255,245,0.1); border:1px solid rgba(255,215,130,0.4); border-radius:60px; padding:12px 20px; margin:12px 0; color:white; outline:none; }
+        .modal-btn { width:100%; background:#FFD966; border:none; padding:12px; border-radius:40px; font-weight:bold; margin-top:12px; cursor:pointer; }
+        .code-btn { background:rgba(255,215,130,0.3); width:auto; padding:8px 16px; margin-left:12px; font-size:0.8rem; }
+        .switch-text { text-align:center; margin-top:16px; color:#FFD966; cursor:pointer; }
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); backdrop-filter:blur(20px); padding:10px 20px; border-radius:60px; color:#FFE5B4; z-index:1200; }
+        .slider-container {
             position: relative;
-        }
-        video {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-        .video-label {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 8px;
-            border-radius: 20px;
-            color: white;
-            font-size: 0.7rem;
-        }
-        .control-bar {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0.5rem;
-            background: rgba(255,255,255,0.8);
-            backdrop-filter: blur(20px);
-            padding: 0.6rem 1rem;
-            border-radius: 60px;
-            margin: 0.8rem 0;
-        }
-        .ctrl-btn {
-            background: white;
-            border: none;
-            padding: 0.4rem 0.8rem;
-            border-radius: 40px;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .ctrl-btn.danger { color: #c0392b; background: #fff0f0; }
-        .ctrl-btn.primary { background: #1f6e8c; color: white; }
-        .whiteboard-container {
-            background: white;
-            border-radius: 1.2rem;
+            height: 44px;
+            background: #f1f1f1;
+            border-radius: 22px;
+            margin: 20px 0;
             overflow: hidden;
-            margin: 1rem 0;
-            display: none;
-        }
-        .whiteboard-container.active { display: block; }
-        .whiteboard-toolbar {
-            display: flex;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            flex-wrap: wrap;
-        }
-        canvas {
-            width: 100%;
-            height: auto;
-            background: white;
-            cursor: crosshair;
-            touch-action: none;
-        }
-        .members-panel {
-            background: rgba(255,255,255,0.7);
-            border-radius: 1.2rem;
-            padding: 0.8rem;
-            margin-top: 1rem;
-        }
-        .member-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .member-chip {
-            background: white;
-            border-radius: 40px;
-            padding: 0.2rem 0.8rem;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            color: white;
-            backdrop-filter: blur(8px);
-            gap: 1rem;
-            text-align: center;
-            padding: 2rem;
-        }
-        .loading-overlay button, .loading-overlay select {
-            background: #fff;
-            color: #1a2c3e;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .loading-overlay select {
-            background: #fff;
             cursor: pointer;
         }
-        .error-message {
-            color: #c0392b;
-            background: #fff0f0;
-            padding: 1rem;
-            border-radius: 1rem;
-            margin: 1rem;
-            text-align: center;
+        .slider-progress {
+            position: absolute;
+            left: 0; top: 0;
+            height: 100%;
+            width: 0;
+            background: #d2e3fc;
+            transition: width 0.02s linear;
         }
-        .server-selector {
-            margin-top: 1rem;
+        .slider-btn {
+            position: absolute;
+            left: 0; top: 0;
+            width: 44px; height: 44px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 50%;
             display: flex;
-            gap: 0.5rem;
-            justify-content: center;
             align-items: center;
-            flex-wrap: wrap;
+            justify-content: center;
+            color: #1a73e8;
+            cursor: grab;
+            user-select: none;
+            transition: left 0.02s linear;
+        }
+        .slider-btn.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+        .tip {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
         }
     </style>
 </head>
 <body>
-<div class="container" id="appRoot"></div>
+<div class="app-container">
+    <div class="navbar">
+        <div class="logo-area" id="homeLogoBtn">
+            <div class="logo-icon">🌰⚡</div>
+            <div class="logo-text">松果AI</div>
+        </div>
+        <div class="nav-links">
+            <span class="nav-link active" data-page="chat">主页</span>
+            <span class="nav-link" data-page="profile">我的</span>
+        </div>
+        <div class="weather-widget">
+            <i class="fas fa-cloud-sun"></i>
+            <span id="weatherTemp">--°C</span>
+            <span id="weatherDesc">加载中...</span>
+            <i class="fas fa-sync-alt" id="refreshWeatherBtn"></i>
+        </div>
+        <div class="user-area" id="userArea">
+            <div id="authButtons">
+                <button class="btn-glass" id="loginBtn">登录 / 注册</button>
+            </div>
+            <div id="userInfo" class="hidden">
+                <span class="user-greeting" id="userEmailSpan"></span>
+                <button class="btn-glass" id="logoutBtn">登出</button>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div id="chatPage" class="chat-panel">
+            <div class="messages-area" id="messagesArea">
+                <div class="message"><div class="message-avatar"><i class="fas fa-brain"></i></div><div class="message-content">✨ 你好！我是松果AI。登录后即可畅聊，支持上传图片识别文字，开启记忆后我会记住我们的对话～</div></div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="输入消息... 或点击📷上传图片" autocomplete="off">
+                <button class="btn-icon" id="uploadImgBtn" title="上传图片提取文字"><i class="fas fa-image"></i></button>
+                <button class="btn-icon send-btn" id="sendMsgBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <div id="profilePage" class="profile-panel hidden">
+            <div class="profile-avatar">
+                <img id="avatarImg" src="" alt="头像">
+            </div>
+            <div class="profile-email" id="profileEmail"></div>
+            <div class="setting-item">
+                <span class="setting-label">✨ AI 模型</span>
+                <select id="modelSelect" class="model-select">
+                    <option value="deepseek-chat">DeepSeek Chat</option>
+                    <option value="deepseek-coder">DeepSeek Coder</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">🧠 记忆开关</span>
+                <div id="memoryToggle" class="toggle-switch"></div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button id="logoutBtnProfile" class="btn-glass" style="width:100%">退出登录</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 登录注册模态框 -->
+<div id="authModal" class="modal hidden">
+    <div class="modal-card">
+        <div class="modal-tabs">
+            <div class="tab active" data-tab="codeLogin">验证码登录</div>
+            <div class="tab" data-tab="pwdLogin">密码登录</div>
+            <div class="tab" data-tab="register">注册</div>
+            <div class="tab" data-tab="reset">忘记密码</div>
+        </div>
+        <div id="tabCodeLogin" class="tab-content active">
+            <input type="email" id="codeEmail" placeholder="邮箱" class="modal-input">
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="codeValue" placeholder="验证码" class="modal-input" style="flex:1">
+                <button id="sendCodeLogin" class="modal-btn code-btn">发送验证码</button>
+            </div>
+            <button id="submitCodeLogin" class="modal-btn">登录</button>
+        </div>
+        <div id="tabPwdLogin" class="tab-content">
+            <input type="email" id="pwdEmail" placeholder="邮箱" class="modal-input">
+            <input type="password" id="pwdPassword" placeholder="密码" class="modal-input">
+            <button id="submitPwdLogin" class="modal-btn">登录</button>
+        </div>
+        <div id="tabRegister" class="tab-content">
+            <input type="email" id="regEmail" placeholder="邮箱" class="modal-input">
+            <input type="password" id="regPassword" placeholder="密码" class="modal-input">
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="regCode" placeholder="验证码" class="modal-input" style="flex:1">
+                <button id="sendCodeReg" class="modal-btn code-btn">发送验证码</button>
+            </div>
+            <button id="submitRegister" class="modal-btn">注册</button>
+        </div>
+        <div id="tabReset" class="tab-content">
+            <input type="email" id="resetEmail" placeholder="邮箱" class="modal-input">
+            <input type="password" id="resetNewPwd" placeholder="新密码" class="modal-input">
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="resetCode" placeholder="验证码" class="modal-input" style="flex:1">
+                <button id="sendCodeReset" class="modal-btn code-btn">发送验证码</button>
+            </div>
+            <button id="submitReset" class="modal-btn">重置密码</button>
+        </div>
+        <div class="switch-text" id="closeModalBtn">关闭</div>
+    </div>
+</div>
+
+<!-- 滑块验证模态框 -->
+<div id="sliderModal" class="modal hidden">
+    <div class="modal-card" style="width: 380px;">
+        <h3 style="margin-bottom: 20px;">请完成安全验证</h3>
+        <div class="slider-container" id="slider">
+            <div class="slider-progress" id="progress"></div>
+            <div class="slider-btn" id="btn">→</div>
+        </div>
+        <div class="tip" id="tip">按住滑块，拖动到最右边</div>
+        <div id="sliderError" style="color:#ff8888; font-size:12px; text-align:center; margin-top:12px;"></div>
+    </div>
+</div>
+
+<div id="toastMsg" class="toast hidden"></div>
 
 <script>
-    // 可选信令服务器列表
-    const PEER_SERVERS = [
-        { host: '0.peerjs.com', port: 443, path: '/', secure: true },
-        { host: '1.peerjs.com', port: 443, path: '/', secure: true },
-        { host: '2.peerjs.com', port: 443, path: '/', secure: true }
-    ];
-    let currentServerIndex = 0; // 默认使用第一个
+    const API_BASE = 'http://localhost:3001';  // 后端地址，根据实际修改
+    let currentToken = localStorage.getItem('pinecone_token');
+    let currentUser = null;
+    let pendingImageText = ''; // 暂存OCR提取的文字
 
-    let currentView = 'landing';
-    let myRole = null;
-    let myPeer = null;
-    let localStream = null;
-    let screenStream = null;
-    let connections = new Map();
-    let dataConnections = new Map();
-    let roomKey = null;
-    let members = new Map();
-    let myName = null;
-    let currentFacing = 'user';
-    let currentMode = 'video';
-    let canvas = null, ctx = null, isDrawing = false, lastX = 0, lastY = 0, drawColor = '#000000', drawSize = 3;
+    // DOM 元素
+    const chatPage = document.getElementById('chatPage');
+    const profilePage = document.getElementById('profilePage');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const messagesDiv = document.getElementById('messagesArea');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendMsgBtn');
+    const uploadBtn = document.getElementById('uploadImgBtn');
+    const authButtonsDiv = document.getElementById('authButtons');
+    const userInfoDiv = document.getElementById('userInfo');
+    const userEmailSpan = document.getElementById('userEmailSpan');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const logoutBtnProfile = document.getElementById('logoutBtnProfile');
+    const loginBtn = document.getElementById('loginBtn');
+    const modal = document.getElementById('authModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const tabs = document.querySelectorAll('.tab');
+    const profileEmail = document.getElementById('profileEmail');
+    const avatarImg = document.getElementById('avatarImg');
+    const modelSelect = document.getElementById('modelSelect');
+    const memoryToggle = document.getElementById('memoryToggle');
 
-    function generateRoomKey() {
-        return Math.floor(100000000000 + Math.random() * 900000000000).toString();
-    }
-    function randomName(role) {
-        const names = ['星野同学', '林川', '明理', '知远', '云深', '南絮', '听风', '静澜'];
-        const name = names[Math.floor(Math.random() * names.length)] + Math.floor(Math.random() * 100);
-        return role === 'host' ? name + '(主持人)' : name + '(学生)';
-    }
-
-    let loadingTimeout = null;
-    let currentRetryCallback = null;
-    function showLoading(msg, retryCallback = null) {
-        if (loadingTimeout) clearTimeout(loadingTimeout);
-        let el = document.querySelector('.loading-overlay');
-        if (!el) {
-            el = document.createElement('div');
-            el.className = 'loading-overlay';
-            document.body.appendChild(el);
-        }
-        currentRetryCallback = retryCallback;
-        let serverSelectHtml = '';
-        if (myRole === 'host' || myRole === 'student') {
-            serverSelectHtml = `
-                <div class="server-selector">
-                    <span>当前服务器: ${PEER_SERVERS[currentServerIndex].host}</span>
-                    <button id="switchServerBtn">切换服务器</button>
-                </div>
-            `;
-        }
-        el.innerHTML = `
-            <div>${msg}</div>
-            ${serverSelectHtml}
-            ${retryCallback ? '<button id="loadingRetryBtn">重试</button>' : ''}
-        `;
-        const switchBtn = document.getElementById('switchServerBtn');
-        if (switchBtn) switchBtn.onclick = () => {
-            currentServerIndex = (currentServerIndex + 1) % PEER_SERVERS.length;
-            showLoading(`已切换到 ${PEER_SERVERS[currentServerIndex].host}<br>重新尝试连接...`, currentRetryCallback);
-            if (currentRetryCallback) setTimeout(() => currentRetryCallback(), 500);
-        };
-        const retryBtn = document.getElementById('loadingRetryBtn');
-        if (retryBtn) retryBtn.onclick = () => { hideLoading(); if (retryCallback) retryCallback(); };
-        el.style.display = 'flex';
-        loadingTimeout = setTimeout(() => {
-            if (el.style.display === 'flex') {
-                hideLoading();
-                alert('操作超时，请重试或切换服务器');
-            }
-        }, 30000);
-    }
-    function hideLoading() {
-        const el = document.querySelector('.loading-overlay');
-        if (el) el.style.display = 'none';
-        if (loadingTimeout) clearTimeout(loadingTimeout);
+    // 辅助函数
+    function showToast(msg) {
+        const toast = document.getElementById('toastMsg');
+        toast.textContent = msg;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 
-    function createPeerWithTimeout(peerId = null, timeout = 20000) {
-        return new Promise((resolve, reject) => {
-            const config = PEER_SERVERS[currentServerIndex];
-            const peer = peerId ? new Peer(peerId, config) : new Peer(config);
-            let resolved = false;
-            const timer = setTimeout(() => {
-                if (!resolved) {
-                    peer.destroy();
-                    reject(new Error('连接超时，可能是网络问题或服务器不可达'));
-                }
-            }, timeout);
-            peer.on('open', () => {
-                if (!resolved) {
-                    resolved = true;
-                    clearTimeout(timer);
-                    resolve(peer);
-                }
-            });
-            peer.on('error', (err) => {
-                if (!resolved) {
-                    resolved = true;
-                    clearTimeout(timer);
-                    reject(err);
-                }
-            });
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m;
         });
     }
 
-    async function getMediaStream() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            return stream;
-        } catch (err) {
-            if (err.name === 'NotAllowedError') throw new Error('请允许摄像头和麦克风权限');
-            if (err.name === 'NotFoundError') throw new Error('未检测到摄像头或麦克风设备');
-            throw new Error('获取媒体设备失败: ' + err.message);
-        }
+    function appendMessage(content, isUser = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isUser ? 'user-message' : ''}`;
+        msgDiv.innerHTML = `<div class="message-avatar">${isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-feather-alt"></i>'}</div><div class="message-content">${escapeHtml(content)}</div>`;
+        messagesDiv.appendChild(msgDiv);
+        msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
-    // 画板相关（省略细节，但保留完整功能）
-    function initWhiteboard() {
-        const container = document.getElementById('whiteboardContainer');
-        if (!container) return;
-        canvas = document.getElementById('sharedCanvas');
-        if (!canvas) return;
-        ctx = canvas.getContext('2d');
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = Math.min(400, rect.height * 0.6);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        function getCanvasCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            let clientX, clientY;
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            let x = (clientX - rect.left) * scaleX;
-            let y = (clientY - rect.top) * scaleY;
-            x = Math.min(Math.max(0, x), canvas.width);
-            y = Math.min(Math.max(0, y), canvas.height);
-            return { x, y };
-        }
-        function startDraw(e) {
-            e.preventDefault();
-            isDrawing = true;
-            const { x, y } = getCanvasCoords(e);
-            lastX = x;
-            lastY = y;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y);
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawSize;
-            ctx.stroke();
-            sendDrawEvent({ x, y, prevX: x, prevY: y, color: drawColor, size: drawSize, action: 'dot' });
-        }
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const { x, y } = getCanvasCoords(e);
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawSize;
-            ctx.stroke();
-            sendDrawEvent({ x, y, prevX: lastX, prevY: lastY, color: drawColor, size: drawSize, action: 'line' });
-            lastX = x;
-            lastY = y;
-        }
-        function endDraw() { isDrawing = false; }
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('touchstart', startDraw);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', endDraw);
-    }
-    function sendDrawEvent(data) {
-        for (let [peerId, dc] of dataConnections) {
-            if (dc.open) dc.send({ type: 'draw', data });
-        }
-    }
-    function applyDrawEvent(data) {
-        if (!ctx) return;
-        const { x, y, prevX, prevY, color, size, action } = data;
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = size;
-        ctx.beginPath();
-        if (action === 'dot') {
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + 0.5, y + 0.5);
-        } else {
-            ctx.moveTo(prevX, prevY);
-            ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        ctx.restore();
-    }
-    function clearCanvas() {
-        if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let [peerId, dc] of dataConnections) {
-                if (dc.open) dc.send({ type: 'clearCanvas' });
-            }
-        }
-    }
-
-    function setMode(mode) {
-        if (mode === currentMode) return;
-        currentMode = mode;
-        const videoModeBtn = document.getElementById('modeVideo');
-        const boardModeBtn = document.getElementById('modeBoard');
-        if (videoModeBtn && boardModeBtn) {
-            if (mode === 'video') {
-                videoModeBtn.classList.add('active');
-                boardModeBtn.classList.remove('active');
-            } else {
-                videoModeBtn.classList.remove('active');
-                boardModeBtn.classList.add('active');
-            }
-        }
-        const videoGrid = document.getElementById('videoGrid');
-        const whiteboard = document.getElementById('whiteboardContainer');
-        if (videoGrid && whiteboard) {
-            if (mode === 'video') {
-                videoGrid.style.display = 'grid';
-                whiteboard.classList.remove('active');
-            } else {
-                videoGrid.style.display = 'none';
-                whiteboard.classList.add('active');
-                if (!ctx) initWhiteboard();
-            }
-        }
-        for (let [peerId, dc] of dataConnections) {
-            if (dc.open) dc.send({ type: 'modeChange', mode });
-        }
-    }
-
-    async function onCreateCourse() {
-        showLoading('步骤1: 请求摄像头/麦克风权限...', () => onCreateCourse());
-        try {
-            localStream = await getMediaStream();
-            showLoading('步骤2: 连接信令服务器...<br>当前服务器: ' + PEER_SERVERS[currentServerIndex].host, () => onCreateCourse());
-            const key = generateRoomKey();
-            roomKey = key;
-            myRole = 'host';
-            myName = randomName('host');
-            myPeer = await createPeerWithTimeout(key);
-            hideLoading();
-            enterRoomPage();
-            myPeer.on('connection', (conn) => {
-                dataConnections.set(conn.peer, conn);
-                conn.on('data', (data) => {
-                    if (data.type === 'draw') applyDrawEvent(data.data);
-                    else if (data.type === 'clearCanvas' && ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
-                    else if (data.type === 'join') {
-                        members.set(conn.peer, { name: data.name, muted: false });
-                        updateMemberListUI();
-                    }
-                });
-            });
-            myPeer.on('call', (call) => {
-                call.answer(localStream);
-                call.on('stream', (remoteStream) => {
-                    addVideoToGrid(call.peer, remoteStream, members.get(call.peer)?.name || '学生');
-                });
-                connections.set(call.peer, call);
-                if (!members.has(call.peer)) members.set(call.peer, { name: '学生', muted: false });
-                updateMemberListUI();
-            });
-        } catch (err) {
-            hideLoading();
-            let errorMsg = err.message;
-            if (errorMsg.includes('超时')) errorMsg = '连接服务器超时，请切换其他服务器或检查网络';
-            else if (errorMsg.includes('权限')) errorMsg = '请允许摄像头和麦克风权限后刷新重试';
-            alert('创建课程失败: ' + errorMsg);
-            renderLanding();
-        }
-    }
-
-    async function onJoinCourse() {
-        const key = document.getElementById('courseKeyInput')?.value.trim();
-        if (!key || !/^\d{12}$/.test(key)) { alert('请输入12位数字密钥'); return; }
-        showLoading('步骤1: 请求摄像头/麦克风权限...', () => onJoinCourse());
-        try {
-            localStream = await getMediaStream();
-            showLoading('步骤2: 连接信令服务器...<br>当前服务器: ' + PEER_SERVERS[currentServerIndex].host, () => onJoinCourse());
-            roomKey = key;
-            myRole = 'student';
-            myName = randomName('student');
-            myPeer = await createPeerWithTimeout();
-            const dc = myPeer.connect(roomKey);
-            dc.on('open', () => {
-                dataConnections.set('host', dc);
-                dc.send({ type: 'join', name: myName });
-            });
-            dc.on('data', (data) => {
-                if (data.type === 'draw') applyDrawEvent(data.data);
-                else if (data.type === 'clearCanvas' && ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
-                else if (data.type === 'modeChange') setMode(data.mode);
-            });
-            const call = myPeer.call(roomKey, localStream);
-            call.on('stream', (remoteStream) => {
-                addVideoToGrid('host', remoteStream, '主持人');
-            });
-            connections.set('host', call);
-            hideLoading();
-            enterRoomPage();
-        } catch (err) {
-            hideLoading();
-            let errorMsg = err.message;
-            if (errorMsg.includes('超时')) errorMsg = '连接服务器超时，请切换其他服务器或检查网络';
-            else if (errorMsg.includes('权限')) errorMsg = '请允许摄像头和麦克风权限后刷新重试';
-            alert('加入课程失败: ' + errorMsg);
-            renderLanding();
-        }
-    }
-
-    function enterRoomPage() {
-        currentView = 'room';
-        renderRoomUI();
-        addVideoToGrid('self', localStream, myName);
-        setupRoomControls();
-        initWhiteboard();
-        setMode('video');
-    }
-
-    function renderRoomUI() {
-        const hostBadge = myRole === 'host' ? '<span style="background:#e6b42220; padding:4px 8px; border-radius:30px;">👑 主持人</span>' : '';
-        document.getElementById('appRoot').innerHTML = `
-            <div>
-                <div class="room-header">
-                    <div>
-                        <h2>📡 网课空间站</h2>
-                        <div style="font-size:0.85rem;">课程密钥：<span class="room-key-badge">${roomKey}</span> ${hostBadge}</div>
-                    </div>
-                    <button class="leave-btn" id="leaveRoomBtn">🚪 离开课堂</button>
-                </div>
-                <div class="mode-switch" id="modeSwitch">
-                    <div class="mode-option active" id="modeVideo">🎥 视频模式</div>
-                    <div class="mode-option" id="modeBoard">✏️ 画板模式</div>
-                </div>
-                <div class="video-grid" id="videoGrid"></div>
-                <div class="whiteboard-container" id="whiteboardContainer">
-                    <div class="whiteboard-toolbar">
-                        <input type="color" id="drawColor" value="#000000" style="width:32px;height:32px;border:none;border-radius:50%;">
-                        <input type="range" id="drawSize" min="1" max="20" value="3" style="width:80px;">
-                        <button class="ctrl-btn" id="clearBoardBtn">🧽 清空</button>
-                    </div>
-                    <canvas id="sharedCanvas" style="width:100%; height:auto; min-height:200px; background:#fff;"></canvas>
-                </div>
-                <div class="control-bar" id="controlBar"></div>
-                <div class="members-panel">
-                    <div class="member-list" id="memberList"></div>
-                </div>
-            </div>
-        `;
-        document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
-        document.getElementById('modeVideo')?.addEventListener('click', () => setMode('video'));
-        document.getElementById('modeBoard')?.addEventListener('click', () => setMode('whiteboard'));
-        const colorPicker = document.getElementById('drawColor');
-        const sizeSlider = document.getElementById('drawSize');
-        const clearBtn = document.getElementById('clearBoardBtn');
-        if (colorPicker) colorPicker.addEventListener('input', (e) => { drawColor = e.target.value; });
-        if (sizeSlider) sizeSlider.addEventListener('input', (e) => { drawSize = parseInt(e.target.value); });
-        if (clearBtn) clearBtn.addEventListener('click', () => clearCanvas());
-    }
-
-    function setupRoomControls() {
-        const controlDiv = document.getElementById('controlBar');
-        if (myRole === 'host') {
-            controlDiv.innerHTML = `
-                <button class="ctrl-btn" id="toggleMicBtn">🎤 麦克风开</button>
-                <button class="ctrl-btn" id="toggleCamBtn">📷 摄像头开</button>
-                <button class="ctrl-btn" id="switchCamBtn">🔄 切换摄像头</button>
-                <button class="ctrl-btn primary" id="shareScreenBtn">🖥️ 共享屏幕</button>
-                <button class="ctrl-btn danger" id="muteAllBtn">🔇 全体静音</button>
-            `;
-            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMic);
-            document.getElementById('toggleCamBtn')?.addEventListener('click', toggleCam);
-            document.getElementById('switchCamBtn')?.addEventListener('click', switchCamera);
-            document.getElementById('shareScreenBtn')?.addEventListener('click', startScreenShare);
-            document.getElementById('muteAllBtn')?.addEventListener('click', muteAllStudents);
-        } else {
-            controlDiv.innerHTML = `
-                <button class="ctrl-btn" id="toggleMicBtn">🎤 麦克风开</button>
-                <button class="ctrl-btn" id="toggleCamBtn">📷 摄像头开</button>
-                <button class="ctrl-btn" id="switchCamBtn">🔄 切换摄像头</button>
-            `;
-            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMic);
-            document.getElementById('toggleCamBtn')?.addEventListener('click', toggleCam);
-            document.getElementById('switchCamBtn')?.addEventListener('click', switchCamera);
-        }
-    }
-
-    function addVideoToGrid(id, stream, label) {
-        const grid = document.getElementById('videoGrid');
-        if (!grid || document.getElementById(`video-${id}`)) return;
-        const card = document.createElement('div');
-        card.className = 'video-card';
-        card.id = `video-card-${id}`;
-        const video = document.createElement('video');
-        video.id = `video-${id}`;
-        video.autoplay = true;
-        video.playsInline = true;
-        video.srcObject = stream;
-        const labelSpan = document.createElement('div');
-        labelSpan.className = 'video-label';
-        labelSpan.innerText = label;
-        card.appendChild(video);
-        card.appendChild(labelSpan);
-        grid.appendChild(card);
-    }
-    function removeVideoFromGrid(id) {
-        const card = document.getElementById(`video-card-${id}`);
-        if (card) card.remove();
-    }
-    function updateMemberListUI() {
-        const container = document.getElementById('memberList');
-        if (!container) return;
-        let html = '';
-        for (let [peerId, info] of members) {
-            const muteIcon = info.muted ? '🔇' : '🎤';
-            html += `<div class="member-chip">
-                        <span>👤 ${info.name}</span> <span class="mute-indicator">${muteIcon}</span>
-                        ${myRole === 'host' && peerId !== myPeer.id ? `
-                            <button style="margin-left:6px; background:none; border:none;" onclick="muteStudent('${peerId}')">🔇</button>
-                            <button style="margin-left:2px; background:none; border:none; color:#e67e22;" onclick="removeStudent('${peerId}')">🚷</button>
-                        ` : ''}
-                      </div>`;
-        }
-        container.innerHTML = html || '<div>暂无其他成员</div>';
-    }
-    window.muteStudent = (studentId) => {
-        const dc = dataConnections.get(studentId);
-        if (dc && dc.open) dc.send({ type: 'mute' });
-        if (members.has(studentId)) members.get(studentId).muted = true;
-        updateMemberListUI();
-    };
-    window.removeStudent = (studentId) => {
-        const dc = dataConnections.get(studentId);
-        if (dc && dc.open) dc.send({ type: 'remove' });
-        const call = connections.get(studentId);
-        if (call) call.close();
-        connections.delete(studentId);
-        dataConnections.delete(studentId);
-        members.delete(studentId);
-        updateMemberListUI();
-        removeVideoFromGrid(studentId);
-    };
-    function muteAllStudents() {
-        for (let [peerId] of members) {
-            if (peerId !== myPeer.id) muteStudent(peerId);
-        }
-    }
-    function toggleMic() {
-        const audioTrack = localStream?.getAudioTracks()[0];
-        if (audioTrack) {
-            audioTrack.enabled = !audioTrack.enabled;
-            const btn = document.getElementById('toggleMicBtn');
-            if (btn) btn.innerHTML = audioTrack.enabled ? '🎤 麦克风开' : '🎤 麦克风关';
-        }
-    }
-    function toggleCam() {
-        const videoTrack = localStream?.getVideoTracks()[0];
-        if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled;
-            const btn = document.getElementById('toggleCamBtn');
-            if (btn) btn.innerHTML = videoTrack.enabled ? '📷 摄像头开' : '📷 摄像头关';
-        }
-    }
-    async function switchCamera() {
-        if (!localStream) return;
-        const oldVideoTrack = localStream.getVideoTracks()[0];
-        if (oldVideoTrack) oldVideoTrack.stop();
-        currentFacing = currentFacing === 'user' ? 'environment' : 'user';
-        try {
-            const newStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { exact: currentFacing } },
-                audio: true
-            });
-            const newVideoTrack = newStream.getVideoTracks()[0];
-            const oldAudio = localStream.getAudioTracks()[0];
-            localStream = newStream;
-            if (oldAudio) localStream.addTrack(oldAudio);
-            const selfVideo = document.querySelector('#video-self');
-            if (selfVideo) selfVideo.srcObject = localStream;
-            for (let [peerId, call] of connections) {
-                if (call.peerConnection) {
-                    const senders = call.peerConnection.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                    if (videoSender) videoSender.replaceTrack(newVideoTrack);
-                }
-            }
-        } catch (err) {
-            console.warn('切换摄像头失败', err);
-            alert('无法切换摄像头，可能没有后置摄像头');
-            currentFacing = currentFacing === 'user' ? 'environment' : 'user';
-        }
-    }
-    async function startScreenShare() {
-        if (!navigator.mediaDevices.getDisplayMedia) {
-            alert('您的设备不支持屏幕共享功能（仅限电脑端使用）');
-            return;
-        }
-        if (!screenStream && localStream) {
+    // 更新UI
+    async function updateAuthUI() {
+        if (currentToken) {
+            authButtonsDiv.classList.add('hidden');
+            userInfoDiv.classList.remove('hidden');
             try {
-                const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                screenStream = screen;
-                const screenTrack = screen.getVideoTracks()[0];
-                for (let [peerId, call] of connections) {
-                    if (call.peerConnection) {
-                        const senders = call.peerConnection.getSenders();
-                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                        if (videoSender) videoSender.replaceTrack(screenTrack);
+                const res = await fetch(`${API_BASE}/api/user`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
+                if (res.ok) {
+                    currentUser = await res.json();
+                    userEmailSpan.textContent = currentUser.email;
+                    profileEmail.textContent = currentUser.email;
+                    avatarImg.src = currentUser.avatar;
+                    modelSelect.value = currentUser.model;
+                    if (currentUser.memoryEnabled) memoryToggle.classList.add('active');
+                    else memoryToggle.classList.remove('active');
+                } else {
+                    throw new Error();
+                }
+            } catch (e) {
+                logout();
+            }
+        } else {
+            authButtonsDiv.classList.remove('hidden');
+            userInfoDiv.classList.add('hidden');
+            currentUser = null;
+            profileEmail.textContent = '';
+            avatarImg.src = '';
+        }
+    }
+
+    function logout() {
+        currentToken = null;
+        currentUser = null;
+        localStorage.removeItem('pinecone_token');
+        updateAuthUI();
+        showToast('已退出登录');
+        messagesDiv.innerHTML = `<div class="message"><div class="message-avatar"><i class="fas fa-brain"></i></div><div class="message-content">✨ 已登出，请重新登录继续使用松果AI~</div></div>`;
+    }
+
+    // 发送消息
+    async function sendMessage() {
+        if (!currentToken) { showToast('请先登录'); return; }
+        const userMsg = messageInput.value.trim();
+        if (!userMsg && !pendingImageText) return;
+        let finalMsg = userMsg;
+        if (pendingImageText) {
+            finalMsg = userMsg ? `${userMsg}\n\n[图片内容]\n${pendingImageText}` : `请分析以下图片内容：\n${pendingImageText}`;
+        }
+        appendMessage(finalMsg, true);
+        messageInput.value = '';
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'message';
+        loadingDiv.innerHTML = `<div class="message-avatar"><i class="fas fa-spinner fa-pulse"></i></div><div class="message-content">思考中...</div>`;
+        messagesDiv.appendChild(loadingDiv);
+        try {
+            const res = await fetch(`${API_BASE}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+                body: JSON.stringify({ message: finalMsg, imageText: pendingImageText })
+            });
+            const data = await res.json();
+            loadingDiv.remove();
+            if (res.ok) appendMessage(data.reply, false);
+            else appendMessage(`错误：${data.error}`, false);
+        } catch (err) {
+            loadingDiv.remove();
+            appendMessage('网络错误，请重试', false);
+        }
+        pendingImageText = ''; // 清除暂存图片文字
+    }
+
+    // OCR处理图片
+    async function handleImageUpload() {
+        if (!currentToken) { showToast('请先登录'); return; }
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            showToast('🔍 正在识别图片文字...');
+            try {
+                const { data: { text } } = await Tesseract.recognize(file, 'eng+chi_sim');
+                if (text.trim()) {
+                    pendingImageText = text.trim();
+                    showToast(`✅ 已提取文字，可直接发送问题，AI将结合图片内容回答`);
+                } else {
+                    showToast('未识别到文字，请尝试更清晰的图片');
+                }
+            } catch (err) {
+                showToast('OCR识别失败');
+            }
+        };
+        input.click();
+    }
+
+    // 设置记忆开关
+    async function setMemory(enabled) {
+        if (!currentToken) return;
+        const res = await fetch(`${API_BASE}/api/user/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+            body: JSON.stringify({ memoryEnabled: enabled })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            currentUser.memoryEnabled = data.settings.memoryEnabled;
+            if (enabled) showToast('记忆已开启，我会记住我们的对话');
+            else showToast('记忆已关闭');
+        }
+    }
+
+    // 切换模型
+    async function setModel(model) {
+        if (!currentToken) return;
+        await fetch(`${API_BASE}/api/user/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+            body: JSON.stringify({ model })
+        });
+        showToast(`模型已切换至 ${model}`);
+    }
+
+    // 发送验证码（真实发送）
+    async function sendCode(email, type) {
+        if (!email) { showToast('请输入邮箱'); return false; }
+        try {
+            const res = await fetch(`${API_BASE}/api/send-code`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+            });
+            if (res.ok) { showToast('验证码已发送至邮箱'); return true; }
+            else { const err = await res.json(); showToast(err.error); return false; }
+        } catch (e) { showToast('发送失败'); return false; }
+    }
+
+    // 滑块验证相关
+    let sliderIsPass = false;
+    let sliderTrajectory = [];
+    let sliderStartTime = 0;
+    let pendingSendCodeCallback = null;
+
+    function initSlider() {
+        const sliderContainer = document.getElementById('slider');
+        const sliderBtn = document.getElementById('btn');
+        const progressBar = document.getElementById('progress');
+        const tip = document.getElementById('tip');
+        let isDragging = false;
+        let startX = 0;
+        let sliderWidth = sliderContainer.offsetWidth;
+        let btnWidth = sliderBtn.offsetWidth;
+        let maxLeft = sliderWidth - btnWidth;
+
+        function updateDimensions() {
+            sliderWidth = sliderContainer.offsetWidth;
+            btnWidth = sliderBtn.offsetWidth;
+            maxLeft = sliderWidth - btnWidth;
+        }
+        window.addEventListener('resize', updateDimensions);
+
+        function startDrag(e) {
+            e.preventDefault();
+            if (sliderIsPass) return;
+            isDragging = true;
+            sliderBtn.classList.add('dragging');
+            startX = (e.clientX || e.touches[0].clientX) - sliderBtn.offsetLeft;
+            sliderStartTime = Date.now();
+            sliderTrajectory = [];
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            let x = (e.clientX || e.touches[0].clientX) - startX;
+            x = Math.min(Math.max(0, x), maxLeft);
+            sliderBtn.style.left = x + 'px';
+            progressBar.style.width = (x + btnWidth / 2) + 'px';
+
+            const now = Date.now();
+            if (sliderTrajectory.length === 0 || now - sliderTrajectory[sliderTrajectory.length-1].time > 5) {
+                sliderTrajectory.push({ x: x, time: now - sliderStartTime });
+            }
+        }
+
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            sliderBtn.classList.remove('dragging');
+            const finalX = parseFloat(sliderBtn.style.left) || 0;
+            if (finalX >= maxLeft * 0.98) {
+                const trajectoryData = {
+                    duration: Date.now() - sliderStartTime,
+                    points: sliderTrajectory
+                };
+                fetch(`${API_BASE}/api/verify-slider`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trajectoryData)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        sliderIsPass = true;
+                        tip.textContent = '验证成功';
+                        tip.style.color = '#0f9d58';
+                        document.getElementById('sliderModal').classList.add('hidden');
+                        if (pendingSendCodeCallback) {
+                            pendingSendCodeCallback();
+                            pendingSendCodeCallback = null;
+                        }
+                    } else {
+                        tip.textContent = '验证失败，请重试';
+                        tip.style.color = '#d93025';
+                        sliderBtn.style.left = '0px';
+                        progressBar.style.width = '0px';
+                        sliderTrajectory = [];
                     }
-                }
-                const selfVideo = document.querySelector('#video-self');
-                if (selfVideo && localStream) {
-                    const oldVideo = localStream.getVideoTracks()[0];
-                    if (oldVideo) localStream.removeTrack(oldVideo);
-                    localStream.addTrack(screenTrack);
-                    selfVideo.srcObject = localStream;
-                }
-                const shareBtn = document.getElementById('shareScreenBtn');
-                if (shareBtn) shareBtn.style.display = 'none';
-                const stopBtn = document.createElement('button');
-                stopBtn.className = 'ctrl-btn';
-                stopBtn.id = 'stopShareBtn';
-                stopBtn.innerHTML = '🛑 停止共享';
-                stopBtn.onclick = stopScreenShare;
-                document.getElementById('controlBar').appendChild(stopBtn);
-                screenTrack.onended = () => stopScreenShare();
-            } catch(e) { console.warn(e); }
+                })
+                .catch(() => {
+                    tip.textContent = '验证服务异常，请重试';
+                    tip.style.color = '#d93025';
+                    sliderBtn.style.left = '0px';
+                    progressBar.style.width = '0px';
+                    sliderTrajectory = [];
+                });
+            } else {
+                sliderBtn.style.left = '0px';
+                progressBar.style.width = '0px';
+                sliderTrajectory = [];
+                tip.textContent = '请拖动到最右侧';
+                tip.style.color = '#666';
+            }
+        }
+
+        sliderBtn.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', endDrag);
+        sliderBtn.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('touchmove', onDrag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function showSlider(callback) {
+        sliderIsPass = false;
+        const sliderBtn = document.getElementById('btn');
+        const progressBar = document.getElementById('progress');
+        const tip = document.getElementById('tip');
+        sliderBtn.style.left = '0px';
+        progressBar.style.width = '0px';
+        tip.textContent = '按住滑块，拖动到最右边';
+        tip.style.color = '#666';
+        pendingSendCodeCallback = callback;
+        document.getElementById('sliderModal').classList.remove('hidden');
+    }
+
+    function sendCodeWithSlider(email, type) {
+        showSlider(() => {
+            sendCode(email, type);
+        });
+    }
+
+    // 天气相关
+    let weatherRefreshInterval = null;
+
+    async function fetchWeather() {
+        try {
+            const res = await fetch(`${API_BASE}/api/weather`);
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('weatherTemp').innerText = `${data.temperature}°C`;
+                document.getElementById('weatherDesc').innerText = data.text;
+            } else {
+                console.error('天气获取失败');
+            }
+        } catch (err) {
+            console.error('天气接口错误', err);
         }
     }
-    async function stopScreenShare() {
-        if (screenStream) {
-            screenStream.getTracks().forEach(t => t.stop());
-            screenStream = null;
-            const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            const camTrack = camStream.getVideoTracks()[0];
-            for (let [peerId, call] of connections) {
-                if (call.peerConnection) {
-                    const senders = call.peerConnection.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                    if (videoSender) videoSender.replaceTrack(camTrack);
-                }
+
+    function startWeatherRefresh() {
+        fetchWeather();
+        if (weatherRefreshInterval) clearInterval(weatherRefreshInterval);
+        weatherRefreshInterval = setInterval(fetchWeather, 60 * 60 * 1000);
+    }
+
+    // 模态框tab切换
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.getElementById(`tab${tabId}`).classList.add('active');
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    }
+
+    // 事件绑定
+    sendBtn.onclick = sendMessage;
+    uploadBtn.onclick = handleImageUpload;
+    messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    logoutBtn.onclick = logout;
+    logoutBtnProfile.onclick = logout;
+    loginBtn.onclick = () => modal.classList.remove('hidden');
+    document.getElementById('refreshWeatherBtn').addEventListener('click', fetchWeather);
+
+    navLinks.forEach(link => {
+        link.onclick = () => {
+            const page = link.dataset.page;
+            navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            if (page === 'chat') {
+                chatPage.classList.remove('hidden');
+                profilePage.classList.add('hidden');
+            } else {
+                chatPage.classList.add('hidden');
+                profilePage.classList.remove('hidden');
+                updateAuthUI();
             }
-            if (localStream) {
-                const oldVideo = localStream.getVideoTracks()[0];
-                if (oldVideo) localStream.removeTrack(oldVideo);
-                localStream.addTrack(camTrack);
-                const selfVideo = document.querySelector('#video-self');
-                if (selfVideo) selfVideo.srcObject = localStream;
-            }
-            const shareBtn = document.getElementById('shareScreenBtn');
-            if (shareBtn) shareBtn.style.display = 'inline-flex';
-            const stopBtn = document.getElementById('stopShareBtn');
-            if (stopBtn) stopBtn.remove();
-        }
-    }
-    function leaveRoom() {
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
-        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-        if (myPeer) myPeer.destroy();
-        renderLanding();
-    }
-    function renderLanding() {
-        document.getElementById('appRoot').innerHTML = `
-            <div class="landing-grid">
-                <div class="glass-card entry-card" id="createCourseCard">
-                    <div class="entry-icon">🎓</div>
-                    <div class="entry-title">创建课程</div>
-                    <div class="entry-desc">成为主持人，拥有课堂管理权限<br>生成专属12位课程密钥</div>
-                    <button class="join-btn" style="background:#2c3e66;">✨ 创建新课</button>
-                </div>
-                <div class="glass-card entry-card" id="joinCourseCard">
-                    <div class="entry-icon">📚</div>
-                    <div class="entry-title">加入课程</div>
-                    <div class="entry-desc">输入12位密钥，进入课堂学习</div>
-                    <div class="join-input-group">
-                        <input type="text" id="courseKeyInput" placeholder="12位数字密钥" maxlength="12" autocomplete="off">
-                        <button class="join-btn" id="joinSubmitBtn">加入</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.getElementById('createCourseCard')?.addEventListener('click', onCreateCourse);
-        document.getElementById('joinSubmitBtn')?.addEventListener('click', onJoinCourse);
-        const keyInput = document.getElementById('courseKeyInput');
-        if (keyInput) keyInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') onJoinCourse(); });
-    }
-    renderLanding();
+        };
+    });
+    document.getElementById('homeLogoBtn').onclick = () => { navLinks[0].click(); };
+
+    closeModalBtn.onclick = () => modal.classList.add('hidden');
+    tabs.forEach(tab => {
+        tab.onclick = () => switchTab(tab.dataset.tab);
+    });
+
+    // 验证码登录
+    document.getElementById('sendCodeLogin').onclick = () => {
+        const email = document.getElementById('codeEmail').value;
+        if (email) sendCodeWithSlider(email, 'login');
+        else showToast('请输入邮箱');
+    };
+    document.getElementById('submitCodeLogin').onclick = async () => {
+        const email = document.getElementById('codeEmail').value;
+        const code = document.getElementById('codeValue').value;
+        if (!email || !code) return;
+        const res = await fetch(`${API_BASE}/api/login-with-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
+        if (res.ok) {
+            const data = await res.json();
+            currentToken = data.token; localStorage.setItem('pinecone_token', currentToken);
+            updateAuthUI(); modal.classList.add('hidden'); showToast('登录成功');
+        } else { const err = await res.json(); showToast(err.error); }
+    };
+    // 密码登录
+    document.getElementById('submitPwdLogin').onclick = async () => {
+        const email = document.getElementById('pwdEmail').value;
+        const password = document.getElementById('pwdPassword').value;
+        const res = await fetch(`${API_BASE}/api/login-with-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+        if (res.ok) {
+            const data = await res.json();
+            currentToken = data.token; localStorage.setItem('pinecone_token', currentToken);
+            updateAuthUI(); modal.classList.add('hidden'); showToast('登录成功');
+        } else { const err = await res.json(); showToast(err.error); }
+    };
+    // 注册
+    document.getElementById('sendCodeReg').onclick = () => {
+        const email = document.getElementById('regEmail').value;
+        if (email) sendCodeWithSlider(email, 'reg');
+        else showToast('请输入邮箱');
+    };
+    document.getElementById('submitRegister').onclick = async () => {
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const code = document.getElementById('regCode').value;
+        const res = await fetch(`${API_BASE}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, code }) });
+        if (res.ok) { showToast('注册成功，请登录'); switchTab('codeLogin'); }
+        else { const err = await res.json(); showToast(err.error); }
+    };
+    // 重置密码
+    document.getElementById('sendCodeReset').onclick = () => {
+        const email = document.getElementById('resetEmail').value;
+        if (email) sendCodeWithSlider(email, 'reset');
+        else showToast('请输入邮箱');
+    };
+    document.getElementById('submitReset').onclick = async () => {
+        const email = document.getElementById('resetEmail').value;
+        const newPassword = document.getElementById('resetNewPwd').value;
+        const code = document.getElementById('resetCode').value;
+        const res = await fetch(`${API_BASE}/api/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, newPassword, code }) });
+        if (res.ok) { showToast('密码重置成功'); switchTab('codeLogin'); }
+        else { const err = await res.json(); showToast(err.error); }
+    };
+
+    // 个人中心设置
+    memoryToggle.onclick = () => {
+        const newState = !memoryToggle.classList.contains('active');
+        setMemory(newState);
+        memoryToggle.classList.toggle('active', newState);
+    };
+    modelSelect.onchange = (e) => setModel(e.target.value);
+
+    // 鼠标移动光效
+    document.body.addEventListener('mousemove', (e) => {
+        const x = (e.clientX / window.innerWidth) * 100;
+        const y = (e.clientY / window.innerHeight) * 100;
+        document.body.style.setProperty('--x', `${x}%`);
+        document.body.style.setProperty('--y', `${y}%`);
+    });
+
+    // 启动
+    initSlider();
+    startWeatherRefresh();
+    updateAuthUI();
 </script>
 </body>
 </html>
