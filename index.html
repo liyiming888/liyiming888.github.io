@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>网课空间站 | 纯净在线课堂</title>
+    <!-- PeerJS 库 -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(145deg, #f6f9fc 0%, #eef2f5 100%);
+            min-height: 100vh;
+            color: #1a2c3e;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 28px 40px -16px rgba(0, 0, 0, 0.15);
+        }
+        .landing-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+        }
+        .entry-card {
+            flex: 1;
+            min-width: 280px;
+            max-width: 420px;
+            padding: 2.2rem 1.8rem;
+            text-align: center;
+            cursor: pointer;
+        }
+        .entry-icon { font-size: 3.5rem; margin-bottom: 1.2rem; }
+        .entry-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, #1f6e8c, #2c3e66);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .entry-desc { color: #5b6e8c; line-height: 1.5; margin-bottom: 1.8rem; }
+        .join-input-group {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 1rem;
+            background: #fff;
+            border-radius: 60px;
+            padding: 0.2rem;
+            border: 1px solid #e2e9f2;
+        }
+        .join-input-group input {
+            flex: 1;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            font-size: 1rem;
+            border-radius: 60px;
+            outline: none;
+            background: transparent;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+        .join-btn {
+            background: #1f6e8c;
+            color: white;
+            border: none;
+            padding: 0 1.6rem;
+            border-radius: 60px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .join-btn:hover { background: #0e5a76; }
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.8rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .room-key-badge {
+            background: #1e2f3f;
+            color: #eef4ff;
+            padding: 0.4rem 1.2rem;
+            border-radius: 40px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+        .leave-btn {
+            background: #e74c3c20;
+            border: 1px solid #e74c3c40;
+            color: #c0392b;
+            padding: 0.5rem 1.4rem;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 1.8rem 0;
+        }
+        .video-card {
+            background: #11181c;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 12px 22px -10px rgba(0,0,0,0.2);
+            aspect-ratio: 4 / 3;
+            position: relative;
+            background: #1e2a32;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #2c3e3f;
+            transform: scaleX(-1);
+        }
+        .video-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 500;
+            pointer-events: none;
+        }
+        .control-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(20px);
+            padding: 1rem 1.8rem;
+            border-radius: 80px;
+            margin: 1.5rem 0;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .ctrl-btn {
+            background: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            font-size: 0.9rem;
+        }
+        .ctrl-btn.danger { color: #c0392b; background: #fff0f0; }
+        .ctrl-btn.primary { background: #1f6e8c; color: white; }
+        .ctrl-btn:hover { transform: scale(0.97); filter: brightness(0.96); }
+        .members-panel {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .member-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+        .member-chip {
+            background: white;
+            border-radius: 40px;
+            padding: 0.3rem 1rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .member-chip.host { background: #ffd96630; border-left: 3px solid #e6b422; }
+        .mute-indicator { font-size: 0.7rem; color: #e67e22; }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+            font-size: 1.2rem;
+            backdrop-filter: blur(8px);
+        }
+        @media (max-width: 680px) {
+            .container { padding: 1rem; }
+            .video-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="appRoot"></div>
+
+<script>
+    // ------------------- 全局状态 -------------------
+    let currentView = 'landing';   // landing, room
+    let myRole = null;              // 'host' or 'student'
+    let myPeer = null;              // Peer 实例
+    let localStream = null;
+    let screenStream = null;
+    let connections = new Map();    // 学生ID -> MediaConnection (主持人用); 学生端只存一个 host 连接
+    let roomKey = null;             // 12位课程密钥（同时也是 Peer ID）
+    let members = new Map();        // peerId -> { name, muted }
+    let myName = null;
+
+    // 辅助函数：生成12位数字密钥
+    function generateRoomKey() {
+        return Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    }
+
+    // 随机昵称
+    function randomName(role) {
+        const names = ['星野同学', '林川', '明理', '知远', '云深', '南絮', '听风', '静澜'];
+        const name = names[Math.floor(Math.random() * names.length)] + Math.floor(Math.random() * 100);
+        return role === 'host' ? name + '(主持人)' : name + '(学生)';
+    }
+
+    // 显示加载中
+    function showLoading(msg) {
+        let el = document.querySelector('.loading-overlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'loading-overlay';
+            document.body.appendChild(el);
+        }
+        el.innerHTML = `<div>${msg}</div>`;
+        el.style.display = 'flex';
+    }
+    function hideLoading() {
+        const el = document.querySelector('.loading-overlay');
+        if (el) el.style.display = 'none';
+    }
+
+    // ------------------- 界面渲染 -------------------
+    function renderLanding() {
+        document.getElementById('appRoot').innerHTML = `
+            <div class="landing-grid">
+                <div class="glass-card entry-card" id="createCourseCard">
+                    <div class="entry-icon">🎓</div>
+                    <div class="entry-title">创建课程</div>
+                    <div class="entry-desc">成为主持人，拥有课堂管理权限<br>生成专属12位课程密钥</div>
+                    <button class="join-btn" style="background:#2c3e66;">✨ 创建新课</button>
+                </div>
+                <div class="glass-card entry-card" id="joinCourseCard">
+                    <div class="entry-icon">📚</div>
+                    <div class="entry-title">加入课程</div>
+                    <div class="entry-desc">输入12位密钥，进入课堂学习</div>
+                    <div class="join-input-group">
+                        <input type="text" id="courseKeyInput" placeholder="12位数字密钥" maxlength="12" autocomplete="off">
+                        <button class="join-btn" id="joinSubmitBtn">加入</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('createCourseCard')?.addEventListener('click', onCreateCourse);
+        document.getElementById('joinSubmitBtn')?.addEventListener('click', onJoinCourse);
+        const keyInput = document.getElementById('courseKeyInput');
+        if (keyInput) keyInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') onJoinCourse(); });
+    }
+
+    // 创建课程（主持人）
+    async function onCreateCourse() {
+        showLoading('正在创建课程...');
+        const key = generateRoomKey();
+        roomKey = key;
+        myRole = 'host';
+        myName = randomName('host');
+
+        try {
+            // 获取本地媒体流
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // 创建 Peer，ID 为生成的12位密钥
+            myPeer = new Peer(key);
+            myPeer.on('open', () => {
+                console.log('主持人 Peer 已开启，ID:', key);
+                hideLoading();
+                enterRoomPage();
+                // 监听学生连接
+                myPeer.on('connection', (conn) => {
+                    // 数据连接（用于交换名称、静音状态等）
+                    conn.on('data', handleStudentData);
+                });
+                myPeer.on('call', (call) => {
+                    // 学生发起的呼叫
+                    acceptCall(call);
+                });
+            });
+            myPeer.on('error', (err) => {
+                console.error(err);
+                hideLoading();
+                alert('创建课程失败：' + err.message);
+                renderLanding();
+            });
+        } catch (err) {
+            hideLoading();
+            alert('无法获取摄像头/麦克风权限：' + err.message);
+            renderLanding();
+        }
+    }
+
+    // 加入课程（学生）
+    async function onJoinCourse() {
+        const keyInput = document.getElementById('courseKeyInput');
+        const key = keyInput?.value.trim();
+        if (!key || !/^\d{12}$/.test(key)) {
+            alert('请输入正确的12位数字密钥');
+            return;
+        }
+        showLoading('正在加入课程...');
+        roomKey = key;
+        myRole = 'student';
+        myName = randomName('student');
+
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // 学生端 Peer 随机 ID（不固定）
+            myPeer = new Peer();
+            myPeer.on('open', (id) => {
+                console.log('学生 Peer 已开启，ID:', id);
+                // 连接到主持人
+                const conn = myPeer.connect(roomKey);
+                conn.on('open', () => {
+                    // 发送自己的名称
+                    conn.send({ type: 'join', name: myName });
+                });
+                conn.on('data', (data) => handleHostData(data));
+                // 呼叫主持人
+                const call = myPeer.call(roomKey, localStream);
+                call.on('stream', (remoteStream) => {
+                    addVideoToGrid('host', remoteStream, '主持人');
+                });
+                connections.set('host', call);
+                hideLoading();
+                enterRoomPage();
+            });
+            myPeer.on('error', (err) => {
+                console.error(err);
+                hideLoading();
+                alert('加入课程失败：' + err.message);
+                renderLanding();
+            });
+        } catch (err) {
+            hideLoading();
+            alert('无法获取摄像头/麦克风权限：' + err.message);
+            renderLanding();
+        }
+    }
+
+    // 主持人接受学生的呼叫
+    function acceptCall(call) {
+        call.answer(localStream);
+        call.on('stream', (remoteStream) => {
+            const studentId = call.peer;
+            addVideoToGrid(studentId, remoteStream, members.get(studentId)?.name || '学生');
+        });
+        connections.set(call.peer, call);
+        // 新学生加入，更新成员列表
+        members.set(call.peer, { name: '加载中...', muted: false });
+        updateMemberListUI();
+    }
+
+    // 处理学生发送的数据（主持人侧）
+    function handleStudentData(data) {
+        if (data.type === 'join') {
+            const studentId = data.from; // 实际发送方是 conn 的 peer
+            members.set(studentId, { name: data.name, muted: false });
+            updateMemberListUI();
+        } else if (data.type === 'mute-status') {
+            const studentId = data.from;
+            if (members.has(studentId)) {
+                members.get(studentId).muted = data.muted;
+                updateMemberListUI();
+            }
+        }
+    }
+
+    // 处理主持人发送的数据（学生侧）
+    function handleHostData(data) {
+        if (data.type === 'mute') {
+            // 强制静音
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = false;
+                    updateMicButtonUI(false);
+                    // 通知主持人自己静音了
+                    const conn = connections.get('host');
+                    if (conn) conn.send({ type: 'mute-status', muted: true });
+                }
+            }
+        } else if (data.type === 'remove') {
+            alert('主持人已将你移出课堂');
+            leaveRoom();
+        }
+    }
+
+    // 进入房间界面
+    function enterRoomPage() {
+        currentView = 'room';
+        renderRoomUI();
+        // 显示自己的视频
+        addVideoToGrid('self', localStream, myName);
+        // 如果之前已有学生连接（主持人场景），已经通过 call 事件添加过了，但成员列表可能未更新
+        if (myRole === 'host') {
+            // 已通过 acceptCall 处理成员，无需额外操作
+        }
+        setupRoomControls();
+    }
+
+    function renderRoomUI() {
+        const hostBadge = myRole === 'host' ? '<span style="background:#e6b42220; padding:4px 8px; border-radius:30px; font-size:0.8rem;">👑 主持人</span>' : '';
+        document.getElementById('appRoot').innerHTML = `
+            <div>
+                <div class="room-header">
+                    <div>
+                        <h2>📡 网课空间站</h2>
+                        <div style="font-size:0.85rem;">课程密钥：<span class="room-key-badge">${roomKey}</span> ${hostBadge}</div>
+                    </div>
+                    <button class="leave-btn" id="leaveRoomBtn">🚪 离开课堂</button>
+                </div>
+                <div class="video-grid" id="videoGrid"></div>
+                <div class="control-bar" id="controlBar"></div>
+                <div class="members-panel">
+                    <div class="member-list" id="memberList"></div>
+                </div>
+            </div>
+        `;
+        document.getElementById('leaveRoomBtn')?.addEventListener('click', () => leaveRoom());
+    }
+
+    function setupRoomControls() {
+        const controlDiv = document.getElementById('controlBar');
+        if (myRole === 'host') {
+            controlDiv.innerHTML = `
+                <button class="ctrl-btn" id="toggleMicBtn">🎤 麦克风开</button>
+                <button class="ctrl-btn" id="toggleCamBtn">📷 摄像头开</button>
+                <button class="ctrl-btn primary" id="shareScreenBtn">🖥️ 共享屏幕</button>
+                <button class="ctrl-btn" id="stopShareBtn" style="display:none;">🛑 停止共享</button>
+                <button class="ctrl-btn danger" id="muteAllBtn">🔇 全体静音</button>
+            `;
+            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMic);
+            document.getElementById('toggleCamBtn')?.addEventListener('click', toggleCam);
+            document.getElementById('shareScreenBtn')?.addEventListener('click', startScreenShare);
+            document.getElementById('stopShareBtn')?.addEventListener('click', stopScreenShare);
+            document.getElementById('muteAllBtn')?.addEventListener('click', () => muteAllStudents());
+        } else {
+            controlDiv.innerHTML = `
+                <button class="ctrl-btn" id="toggleMicBtn">🎤 麦克风开</button>
+                <button class="ctrl-btn" id="toggleCamBtn">📷 摄像头开</button>
+            `;
+            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMic);
+            document.getElementById('toggleCamBtn')?.addEventListener('click', toggleCam);
+        }
+    }
+
+    // 视频管理
+    function addVideoToGrid(id, stream, label) {
+        const grid = document.getElementById('videoGrid');
+        if (!grid) return;
+        if (document.getElementById(`video-${id}`)) return;
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.id = `video-card-${id}`;
+        const video = document.createElement('video');
+        video.id = `video-${id}`;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.srcObject = stream;
+        const labelSpan = document.createElement('div');
+        labelSpan.className = 'video-label';
+        labelSpan.innerText = label;
+        card.appendChild(video);
+        card.appendChild(labelSpan);
+        grid.appendChild(card);
+    }
+
+    function removeVideoFromGrid(id) {
+        const card = document.getElementById(`video-card-${id}`);
+        if (card) card.remove();
+    }
+
+    function updateMemberListUI() {
+        const container = document.getElementById('memberList');
+        if (!container) return;
+        let html = '';
+        for (let [peerId, info] of members) {
+            const muteIcon = info.muted ? '🔇' : '🎤';
+            html += `<div class="member-chip">
+                        <span>👤 ${info.name}</span> <span class="mute-indicator">${muteIcon}</span>
+                        ${myRole === 'host' && peerId !== myPeer.id ? `
+                            <button style="margin-left:8px; background:none; border:none; cursor:pointer;" onclick="muteStudent('${peerId}')">🔇静音</button>
+                            <button style="margin-left:4px; background:none; border:none; cursor:pointer; color:#e67e22;" onclick="removeStudent('${peerId}')">🚷移除</button>
+                        ` : ''}
+                      </div>`;
+        }
+        container.innerHTML = html || '<div>暂无其他成员</div>';
+    }
+
+    // 主持人操作
+    window.muteStudent = (studentId) => {
+        const conn = myPeer.connect(studentId);
+        conn.on('open', () => {
+            conn.send({ type: 'mute' });
+            if (members.has(studentId)) members.get(studentId).muted = true;
+            updateMemberListUI();
+        });
+    };
+    window.removeStudent = (studentId) => {
+        const conn = myPeer.connect(studentId);
+        conn.on('open', () => {
+            conn.send({ type: 'remove' });
+        });
+        // 断开媒体连接
+        const call = connections.get(studentId);
+        if (call) call.close();
+        connections.delete(studentId);
+        members.delete(studentId);
+        updateMemberListUI();
+        removeVideoFromGrid(studentId);
+    };
+    function muteAllStudents() {
+        for (let [peerId] of members) {
+            if (peerId !== myPeer.id) muteStudent(peerId);
+        }
+    }
+
+    // 媒体控制
+    function toggleMic() {
+        const audioTrack = localStream?.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            updateMicButtonUI(audioTrack.enabled);
+            if (myRole === 'student') {
+                const conn = connections.get('host');
+                if (conn) conn.send({ type: 'mute-status', muted: !audioTrack.enabled });
+            }
+        }
+    }
+    function toggleCam() {
+        const videoTrack = localStream?.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            const btn = document.getElementById('toggleCamBtn');
+            if (btn) btn.innerHTML = videoTrack.enabled ? '📷 摄像头开' : '📷 摄像头关';
+        }
+    }
+    function updateMicButtonUI(enabled) {
+        const btn = document.getElementById('toggleMicBtn');
+        if (btn) btn.innerHTML = enabled ? '🎤 麦克风开' : '🎤 麦克风关';
+    }
+
+    // 屏幕共享
+    async function startScreenShare() {
+        if (!screenStream && localStream) {
+            try {
+                const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                screenStream = screen;
+                const screenTrack = screen.getVideoTracks()[0];
+                // 替换所有现有连接的视频轨道
+                for (let [peerId, call] of connections) {
+                    const sender = call.peerConnection?.getSenders?.().find(s => s.track?.kind === 'video');
+                    if (sender) sender.replaceTrack(screenTrack);
+                }
+                // 更新本地视频预览
+                const selfVideo = document.querySelector('#video-self');
+                if (selfVideo && localStream) {
+                    const oldVideo = localStream.getVideoTracks()[0];
+                    if (oldVideo) localStream.removeTrack(oldVideo);
+                    localStream.addTrack(screenTrack);
+                    selfVideo.srcObject = localStream;
+                }
+                document.getElementById('shareScreenBtn').style.display = 'none';
+                document.getElementById('stopShareBtn').style.display = 'inline-flex';
+                screenTrack.onended = () => stopScreenShare();
+            } catch(e) { console.warn(e); }
+        }
+    }
+    async function stopScreenShare() {
+        if (screenStream) {
+            screenStream.getTracks().forEach(t => t.stop());
+            screenStream = null;
+            // 恢复摄像头
+            const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            const camTrack = camStream.getVideoTracks()[0];
+            for (let [peerId, call] of connections) {
+                const sender = call.peerConnection?.getSenders?.().find(s => s.track?.kind === 'video');
+                if (sender) sender.replaceTrack(camTrack);
+            }
+            if (localStream) {
+                const oldVideo = localStream.getVideoTracks()[0];
+                if (oldVideo) localStream.removeTrack(oldVideo);
+                localStream.addTrack(camTrack);
+                const selfVideo = document.querySelector('#video-self');
+                if (selfVideo) selfVideo.srcObject = localStream;
+            }
+            document.getElementById('shareScreenBtn').style.display = 'inline-flex';
+            document.getElementById('stopShareBtn').style.display = 'none';
+        }
+    }
+
+    // 离开课堂
+    function leaveRoom() {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+        if (myPeer) myPeer.destroy();
+        renderLanding();
+    }
+
+    // 初始化入口
+    renderLanding();
+</script>
+</body>
+</html>
