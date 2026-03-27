@@ -1,754 +1,911 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>松果AI | 智能对话与视觉感知</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at 20% 30%, rgba(30,35,48,1) 0%, rgba(15,18,28,1) 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(100,180,250,0.15), rgba(255,100,150,0.05) 60%, transparent);
-            pointer-events: none;
-            z-index: 0;
-        }
-        .app-container {
-            width: 1400px;
-            max-width: 98vw;
-            height: 90vh;
-            background: rgba(20,24,36,0.45);
-            backdrop-filter: blur(18px);
-            border-radius: 48px;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-            z-index: 2;
-        }
-        .app-container::after {
-            content: '';
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(ellipse at 30% 20%, rgba(255,255,240,0.2) 0%, rgba(255,255,255,0) 70%);
-            pointer-events: none;
-        }
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 32px;
-            background: rgba(10,14,23,0.5);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .logo-area { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .logo-icon { font-size: 32px; filter: drop-shadow(0 0 8px rgba(255,180,80,0.6)); animation: softPulse 2s infinite alternate; }
-        @keyframes softPulse { 0% { text-shadow: 0 0 2px rgba(255,200,100,0.5); } 100% { text-shadow: 0 0 12px rgba(255,160,60,0.9); } }
-        .logo-text { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #FFF8E7, #FFD966); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .nav-links { display: flex; gap: 24px; margin-left: 40px; }
-        .nav-link { color: rgba(255,240,200,0.8); text-decoration: none; font-weight: 500; transition: 0.2s; cursor: pointer; font-size: 1rem; }
-        .nav-link.active { color: #FFD966; border-bottom: 2px solid #FFD966; padding-bottom: 4px; }
-        .weather-widget {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.85rem;
-            color: #FFE6B3;
-            margin-left: auto;
-        }
-        .weather-widget i { font-size: 1rem; }
-        #refreshWeatherBtn { cursor: pointer; transition: transform 0.2s; }
-        #refreshWeatherBtn:hover { transform: rotate(30deg); }
-        .user-area { display: flex; align-items: center; gap: 16px; margin-left: 16px; }
-        .btn-glass {
-            background: rgba(255,255,245,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.25);
-            padding: 8px 20px; border-radius: 40px; font-weight: 500; color: white; cursor: pointer; transition: 0.25s ease;
-        }
-        .btn-glass:hover { background: rgba(255,255,245,0.3); transform: scale(1.02); border-color: rgba(255,215,130,0.6); }
-        .user-greeting { background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 60px; font-size: 0.85rem; font-weight: 500; color: #FFE6B3; }
-        .main-content { flex: 1; display: flex; overflow: hidden; }
-        .chat-panel { flex: 1; display: flex; flex-direction: column; padding: 20px 28px; overflow: hidden; }
-        .messages-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 8px; }
-        .message { display: flex; gap: 14px; animation: fadeSlideUp 0.3s ease; }
-        .message-avatar { width: 40px; height: 40px; background: rgba(255,215,130,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); border: 1px solid rgba(255,215,130,0.4); }
-        .message-content { max-width: 70%; background: rgba(30,35,48,0.7); backdrop-filter: blur(12px); padding: 12px 18px; border-radius: 24px; border-bottom-left-radius: 6px; color: #f0f3fa; font-size: 0.95rem; line-height: 1.5; border: 1px solid rgba(255,255,210,0.15); }
-        .user-message { flex-direction: row-reverse; }
-        .user-message .message-content { background: rgba(255,215,130,0.25); border-bottom-right-radius: 6px; border-bottom-left-radius: 24px; color: #fff7e8; }
-        .input-area {
-            margin-top: 20px; background: rgba(12,16,26,0.6); backdrop-filter: blur(20px); border-radius: 60px;
-            padding: 8px 12px 8px 24px; display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,210,0.25);
-        }
-        .input-area input { flex: 1; background: transparent; border: none; color: white; font-size: 1rem; padding: 14px 0; outline: none; }
-        .input-area input::placeholder { color: rgba(255,240,200,0.5); }
-        .btn-icon {
-            background: rgba(255,210,100,0.2); border: none; width: 44px; height: 44px; border-radius: 50%; color: #FFE1A0;
-            font-size: 1.3rem; cursor: pointer; transition: 0.2s; backdrop-filter: blur(8px);
-        }
-        .btn-icon:hover { background: rgba(255,210,100,0.6); color: #1e1a2f; transform: scale(1.05); }
-        .send-btn { background: linear-gradient(135deg, #FFD966, #FFB347); color: #1e1a2f; box-shadow: 0 2px 10px rgba(255,180,70,0.3); }
-        .profile-panel {
-            width: 320px; background: rgba(20,24,36,0.6); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.1);
-            padding: 28px 20px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto;
-        }
-        .profile-avatar { text-align: center; }
-        .profile-avatar img { width: 100px; height: 100px; border-radius: 50%; border: 2px solid #FFD966; background: #1e1a2f; object-fit: cover; }
-        .profile-email { text-align: center; color: #FFE6B3; font-weight: 500; margin-top: 12px; word-break: break-all; }
-        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .setting-label { color: white; font-weight: 500; }
-        .toggle-switch { width: 44px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 40px; position: relative; cursor: pointer; transition: 0.2s; }
-        .toggle-switch.active { background: #FFD966; }
-        .toggle-switch::after { content: ''; width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
-        .toggle-switch.active::after { left: 22px; }
-        select.model-select { background: rgba(0,0,0,0.5); border: 1px solid #FFD966; color: white; padding: 8px 12px; border-radius: 30px; font-size: 0.9rem; cursor: pointer; }
-        .hidden { display: none; }
-        .modal {
-            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
-            display: flex; align-items: center; justify-content: center; z-index: 1500;
-        }
-        .modal-card { background: rgba(25,30,45,0.95); backdrop-filter: blur(32px); border-radius: 48px; padding: 32px; width: 420px; border: 1px solid rgba(255,215,130,0.4); color: white; }
-        .modal-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.2); }
-        .tab { padding: 8px 16px; cursor: pointer; border-radius: 40px; transition: 0.2s; }
-        .tab.active { background: #FFD966; color: #1e1a2f; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .modal-input { width:100%; background:rgba(255,255,245,0.1); border:1px solid rgba(255,215,130,0.4); border-radius:60px; padding:12px 20px; margin:12px 0; color:white; outline:none; }
-        .modal-btn { width:100%; background:#FFD966; border:none; padding:12px; border-radius:40px; font-weight:bold; margin-top:12px; cursor:pointer; }
-        .code-btn { background:rgba(255,215,130,0.3); width:auto; padding:8px 16px; margin-left:12px; font-size:0.8rem; }
-        .switch-text { text-align:center; margin-top:16px; color:#FFD966; cursor:pointer; }
-        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); backdrop-filter:blur(20px); padding:10px 20px; border-radius:60px; color:#FFE5B4; z-index:1200; }
-        .slider-container {
-            position: relative;
-            width: 100%;
-            height: 44px;
-            background: #f1f1f1;
-            border-radius: 22px;
-            margin: 20px 0;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        .slider-progress {
-            position: absolute;
-            left: 0; top: 0;
-            height: 100%;
-            width: 0;
-            background: #d2e3fc;
-            transition: width 0.02s linear;
-        }
-        .slider-btn {
-            position: absolute;
-            left: 0; top: 0;
-            width: 44px; height: 44px;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1a73e8;
-            cursor: grab;
-            user-select: none;
-            transition: left 0.02s linear;
-        }
-        .slider-btn.dragging {
-            cursor: grabbing;
-            transition: none;
-        }
-        .tip {
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            margin-top: 8px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DeepSeek（模拟）官网</title>
+  <style>
+    /* 全局基础变量（横屏/大屏幕默认样式） */
+    :root {
+      --slider-width: 720px;
+      --slider-height: 60px;
+      --slider-bg: #ffffff;
+      --text-normal: #1a1a1a;
+      --text-active: #ffffff;
+      --thumb-bg: #555555;
+      --item-padding: 0 28px;
+      --font-size: 16px;
+      --font-weight: 500;
+      --line-height: 1;
+      --thumb-normal-height: calc(var(--slider-height) - 8px);
+      --thumb-active-height: var(--slider-height);
+      --thumb-active-width-extra: 30px;
+      --bounce-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --glass-brightness: 50;
+      --glass-opacity: 0.93;
+      --glass-blur: 11;
+      --glass-distortion: -180;
+      --primary-color: #555555;
+      --user-msg-bg: #555555;
+      --ai-msg-bg: #ffffff;
+    }
+
+    /* 竖屏适配（屏幕宽度小于768px时自动生效） */
+    @media screen and (max-width: 767px) {
+      :root {
+        --slider-width: 92vw;
+        --slider-height: 44px;
+        --item-padding: 0 16px;
+        --font-size: 14px;
+        --thumb-active-width-extra: 16px;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f0f0f0;
+      padding: 0;
+      padding-bottom: 100px;
+    }
+
+    /* 内容区域容器 */
+    .container {
+      width: 100%;
+      max-width: 900px;
+      padding: 40px 20px;
+      flex: 1;
+      display: none;
+      height: calc(100vh - 100px);
+    }
+    .container.active {
+      display: block;
+    }
+
+    /* 主页样式 */
+    .home-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 24px;
+      color: #222;
+      text-align: center;
+    }
+    .home-desc {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #333;
+      margin-bottom: 16px;
+      text-align: justify;
+    }
+
+    /* 产品图片区域 */
+    .product-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .product-item {
+      aspect-ratio: 4/3;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .product-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ==================== AI客服聊天界面样式 ==================== */
+    .chat-wrap {
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: center;
+    }
+    .chat-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #222;
+    }
+    .chat-header p {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+    /* 消息列表 */
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    /* 消息气泡通用样式 */
+    .message-item {
+      display: flex;
+      max-width: 85%;
+      animation: msgShow 0.2s ease;
+    }
+    @keyframes msgShow {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* 用户消息（靠右） */
+    .message-user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    .message-user .msg-bubble {
+      background: var(--user-msg-bg);
+      color: #fff;
+      border-radius: 12px 12px 0 12px;
+    }
+    /* AI消息（靠左） */
+    .message-ai {
+      align-self: flex-start;
+    }
+    .message-ai .msg-bubble {
+      background: var(--ai-msg-bg);
+      color: #222;
+      border-radius: 12px 12px 12px 0;
+      border: 1px solid #f0f0f0;
+    }
+    .msg-bubble {
+      padding: 12px 16px;
+      line-height: 1.6;
+      font-size: 15px;
+      word-break: break-word;
+    }
+    /* 加载状态 */
+    .loading-dot {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      height: 20px;
+    }
+    .loading-dot span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #999;
+      animation: dotLoad 1.4s infinite ease-in-out both;
+    }
+    .loading-dot span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dot span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes dotLoad {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    /* 输入区域 */
+    .chat-input-wrap {
+      padding: 16px 20px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .chat-input {
+      flex: 1;
+      height: 44px;
+      padding: 0 16px;
+      border: 1px solid #eee;
+      border-radius: 22px;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.2s ease;
+    }
+    .chat-input:focus {
+      border-color: var(--primary-color);
+    }
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--primary-color);
+      color: #fff;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    /* 底部备用联系方式 */
+    .contact-footer {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+    }
+    .contact-footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    /* 错误提示 */
+    .error-tip {
+      color: #ff4d4f;
+      font-size: 12px;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* ==================== 底部滑块导航样式 ==================== */
+    .pill-slider {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--slider-width);
+      height: var(--slider-height);
+      background: var(--slider-bg);
+      border-radius: 9999px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      user-select: none;
+      flex-shrink: 0;
+      z-index: 99;
+    }
+
+    .slider-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+      flex-shrink: 0;
+    }
+
+    .slider-content-bottom {
+      color: var(--text-normal);
+      font-size: var(--font-size);
+      font-weight: var(--font-weight);
+      line-height: var(--line-height);
+      letter-spacing: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slider-item {
+      padding: var(--item-padding);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      line-height: var(--line-height);
+    }
+
+    .slider-thumb {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      height: var(--thumb-normal-height);
+      background: var(--thumb-bg);
+      border-radius: 9999px;
+      overflow: hidden;
+      cursor: grab;
+      transition: left 0.3s var(--bounce-easing), 
+                  width 0.3s var(--bounce-easing), 
+                  height 0.25s var(--bounce-easing), 
+                  background 0.25s var(--bounce-easing), 
+                  box-shadow 0.25s var(--bounce-easing);
+      z-index: 2;
+      --current-width: 0px;
+    }
+
+    .slider-thumb.active {
+      height: var(--thumb-active-height);
+      width: calc(var(--current-width) + var(--thumb-active-width-extra));
+      background: transparent;
+      backdrop-filter: url(#glass-filter) saturate(1);
+      -webkit-backdrop-filter: url(#glass-filter) saturate(1);
+      box-shadow:
+        0 0 2px 1px rgba(0, 0, 0, 0.15) inset,
+        0 0 10px 4px rgba(0, 0, 0, 0.1) inset,
+        0px 4px 16px rgba(17, 17, 26, 0.05),
+        0px 8px 24px rgba(17, 17, 26, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .slider-thumb:active {
+      cursor: grabbing;
+    }
+
+    .slider-content-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: var(--text-active);
+      font-size: var(--font-size);
+      font-weight: var(--font-weight);
+      line-height: var(--line-height);
+      letter-spacing: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+      flex-shrink: 0;
+      height: 100%;
+    }
+
+    @supports not (backdrop-filter: url(#glass-filter)) {
+      .slider-thumb.active {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px) saturate(1.8) brightness(1.1);
+        -webkit-backdrop-filter: blur(12px) saturate(1.8) brightness(1.1);
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="navbar">
-        <div class="logo-area" id="homeLogoBtn">
-            <div class="logo-icon">🌰⚡</div>
-            <div class="logo-text">松果AI</div>
-        </div>
-        <div class="nav-links">
-            <span class="nav-link active" data-page="chat">主页</span>
-            <span class="nav-link" data-page="profile">我的</span>
-        </div>
-        <div class="weather-widget">
-            <i class="fas fa-cloud-sun"></i>
-            <span id="weatherTemp">--°C</span>
-            <span id="weatherDesc">加载中...</span>
-            <i class="fas fa-sync-alt" id="refreshWeatherBtn"></i>
-        </div>
-        <div class="user-area" id="userArea">
-            <div id="authButtons">
-                <button class="btn-glass" id="loginBtn">登录 / 注册</button>
-            </div>
-            <div id="userInfo" class="hidden">
-                <span class="user-greeting" id="userEmailSpan"></span>
-                <button class="btn-glass" id="logoutBtn">登出</button>
-            </div>
-        </div>
-    </div>
-    <div class="main-content">
-        <div id="chatPage" class="chat-panel">
-            <div class="messages-area" id="messagesArea">
-                <div class="message"><div class="message-avatar"><i class="fas fa-brain"></i></div><div class="message-content">✨ 你好！我是松果AI。登录后即可畅聊，支持上传图片识别文字，开启记忆后我会记住我们的对话～</div></div>
-            </div>
-            <div class="input-area">
-                <input type="text" id="messageInput" placeholder="输入消息... 或点击📷上传图片" autocomplete="off">
-                <button class="btn-icon" id="uploadImgBtn" title="上传图片提取文字"><i class="fas fa-image"></i></button>
-                <button class="btn-icon send-btn" id="sendMsgBtn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-        <div id="profilePage" class="profile-panel hidden">
-            <div class="profile-avatar">
-                <img id="avatarImg" src="" alt="头像">
-            </div>
-            <div class="profile-email" id="profileEmail"></div>
-            <div class="setting-item">
-                <span class="setting-label">✨ AI 模型</span>
-                <select id="modelSelect" class="model-select">
-                    <option value="deepseek-chat">DeepSeek Chat</option>
-                    <option value="deepseek-coder">DeepSeek Coder</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">🧠 记忆开关</span>
-                <div id="memoryToggle" class="toggle-switch"></div>
-            </div>
-            <div style="margin-top: 20px;">
-                <button id="logoutBtnProfile" class="btn-glass" style="width:100%">退出登录</button>
-            </div>
-        </div>
-    </div>
+
+<!-- 液态玻璃核心SVG滤镜 -->
+<svg width="0" height="0" style="position:absolute;pointer-events:none;opacity:0;" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glass-filter" colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
+      <feImage id="displacement-map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+      <feDisplacementMap id="red-channel" in="SourceGraphic" in2="map" scale="-180" xChannelSelector="R" yChannelSelector="G" result="dispRed" />
+      <feColorMatrix
+        in="dispRed"
+        type="matrix"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"
+        result="red"
+      />
+      <feDisplacementMap id="green-channel" in="SourceGraphic" in2="map" scale="-170" xChannelSelector="R" yChannelSelector="G" result="dispGreen" />
+      <feColorMatrix
+        in="dispGreen"
+        type="matrix"
+        values="0 0 0 0 0
+                0 1 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"
+        result="green"
+      />
+      <feDisplacementMap id="blue-channel" in="SourceGraphic" in2="map" scale="-160" xChannelSelector="R" yChannelSelector="G" result="dispBlue" />
+      <feColorMatrix
+        in="dispBlue"
+        type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0"
+        result="blue"
+      />
+      <feBlend in="red" in2="green" mode="screen" result="rg" />
+      <feBlend in="rg" in2="blue" mode="screen" result="output" />
+      <feGaussianBlur in="output" stdDeviation="0.7" />
+    </filter>
+  </defs>
+</svg>
+
+<!-- =================================== -->
+<!-- 主页内容 -->
+<div id="home" class="container active">
+  <h2 class="home-title">DeepSeek（模拟）</h2>
+  <div class="home-desc">
+    本产品可以为您提供deep seek不支持的多模型选择
+  </div>
+  <div class="home-desc">
+    后续可由li哥进行功能定制与参数调整。
+  </div>
+  <div class="home-desc">
+    核心能力：陪您聊天，并且选择三种不同类型的deep seek模型
+  </div>
 </div>
 
-<!-- 登录注册模态框 -->
-<div id="authModal" class="modal hidden">
-    <div class="modal-card">
-        <div class="modal-tabs">
-            <div class="tab active" data-tab="codeLogin">验证码登录</div>
-            <div class="tab" data-tab="pwdLogin">密码登录</div>
-            <div class="tab" data-tab="register">注册</div>
-            <div class="tab" data-tab="reset">忘记密码</div>
-        </div>
-        <div id="tabCodeLogin" class="tab-content active">
-            <input type="email" id="codeEmail" placeholder="邮箱" class="modal-input">
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="codeValue" placeholder="验证码" class="modal-input" style="flex:1">
-                <button id="sendCodeLogin" class="modal-btn code-btn">发送验证码</button>
-            </div>
-            <button id="submitCodeLogin" class="modal-btn">登录</button>
-        </div>
-        <div id="tabPwdLogin" class="tab-content">
-            <input type="email" id="pwdEmail" placeholder="邮箱" class="modal-input">
-            <input type="password" id="pwdPassword" placeholder="密码" class="modal-input">
-            <button id="submitPwdLogin" class="modal-btn">登录</button>
-        </div>
-        <div id="tabRegister" class="tab-content">
-            <input type="email" id="regEmail" placeholder="邮箱" class="modal-input">
-            <input type="password" id="regPassword" placeholder="密码" class="modal-input">
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="regCode" placeholder="验证码" class="modal-input" style="flex:1">
-                <button id="sendCodeReg" class="modal-btn code-btn">发送验证码</button>
-            </div>
-            <button id="submitRegister" class="modal-btn">注册</button>
-        </div>
-        <div id="tabReset" class="tab-content">
-            <input type="email" id="resetEmail" placeholder="邮箱" class="modal-input">
-            <input type="password" id="resetNewPwd" placeholder="新密码" class="modal-input">
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="resetCode" placeholder="验证码" class="modal-input" style="flex:1">
-                <button id="sendCodeReset" class="modal-btn code-btn">发送验证码</button>
-            </div>
-            <button id="submitReset" class="modal-btn">重置密码</button>
-        </div>
-        <div class="switch-text" id="closeModalBtn">关闭</div>
+<!-- =================================== -->
+<!-- 产品图片 -->
+<div id="product" class="container">
+  <h2 class="home-title">DeepSeek（模拟）网页照片展示</h2>
+  <div class="product-wrap">
+    <div class="product-item">
+      <!-- 替换成你的图片1地址 -->
+      <img src="https://picsum.photos/600/450?random=1" alt="最棒的AI聊天区">
     </div>
+    <div class="product-item">
+      <!-- 替换成你的图片2地址 -->
+      <img src="https://picsum.photos/600/450?random=2" alt="多样化选择">
+    </div>
+    <div class="product-item">
+      <!-- 替换成你的图片3地址 -->
+      <img src="https://picsum.photos/600/450?random=3" alt="三种不同模型">
+    </div>
+  </div>
 </div>
 
-<!-- 滑块验证模态框 -->
-<div id="sliderModal" class="modal hidden">
-    <div class="modal-card" style="width: 380px;">
-        <h3 style="margin-bottom: 20px;">请完成安全验证</h3>
-        <div class="slider-container" id="slider">
-            <div class="slider-progress" id="progress"></div>
-            <div class="slider-btn" id="btn">→</div>
-        </div>
-        <div class="tip" id="tip">按住滑块，拖动到最右边</div>
-        <div id="sliderError" style="color:#ff8888; font-size:12px; text-align:center; margin-top:12px;"></div>
+<!-- =================================== -->
+<!-- 联系我们 - AI客服 -->
+<div id="contact" class="container">
+  <div class="chat-wrap">
+    <div class="chat-header">
+      <h3>AI专属客服</h3>
+      <p>7x24小时在线，为您解答产品相关问题</p>
     </div>
+    <!-- 消息列表 -->
+    <div id="chat-messages" class="chat-messages">
+      <!-- 消息会通过JS动态渲染 -->
+    </div>
+    <!-- 输入区域 -->
+    <div class="chat-input-wrap">
+      <input type="text" id="chat-input" class="chat-input" placeholder="请输入您想咨询的问题..." />
+      <button id="send-btn" class="send-btn">→</button>
+    </div>
+    <div id="error-tip" class="error-tip"></div>
+  </div>
+  <div class="contact-footer">
+    如需人工对接，可添加微信：<span id="wechat">wangye_ai</span>
+  </div>
 </div>
 
-<div id="toastMsg" class="toast hidden"></div>
+<!-- =================================== -->
+<!-- 底部滑块导航 -->
+<div class="pill-slider">
+  <div class="slider-content slider-content-bottom">
+    <div class="slider-item">主页</div>
+    <div class="slider-item">AI歌者产品</div>
+    <div class="slider-item">联系我们</div>
+  </div>
+
+  <div class="slider-thumb">
+    <div class="slider-content slider-content-top">
+      <div class="slider-item">主页</div>
+      <div class="slider-item">AI歌者产品</div>
+      <div class="slider-item">联系我们</div>
+    </div>
+  </div>
+</div>
 
 <script>
-    const API_BASE = 'http://localhost:3001';  // 后端地址，根据实际修改
-    let currentToken = localStorage.getItem('pinecone_token');
-    let currentUser = null;
-    let pendingImageText = ''; // 暂存OCR提取的文字
+  // ==================== 【你只需修改这里的配置即可】 ====================
+  // 1. 你的Deepseek API密钥（去Deepseek开放平台申请：https://platform.deepseek.com/）
+  const DEEPSEEK_API_KEY = "sk-40fcf84ac33f4a8c9ca8e5fa92861b89";
+  // 2. AI客服的核心信息&规则，你直接在这里填写产品详情、回答要求，AI会严格按这个回答
+  const AI_SYSTEM_PROMPT = `
+你是【我的AI产品】产品的专属智能客服，必须严格按照以下信息和规则回答用户问题：
+1. 产品核心信息：
+   - 产品名称：DeepSeek（模拟）
+   - 核心功能：具有三种可供选择的模型，并且这三种模型皆可以使用，并且可以自行进行选择，而且本产品嵌入deepseek
+   - 适用场景：聊天
+   - 产品特点：可以为您提供deep seek不支持的多重模型选择
+   - 负责人：李哥，可定制功能与参数调整
+2. 回答规则：
+   - 仅回答和本AI产品相关的问题，无关问题礼貌引导用户咨询产品相关内容
+   - 语气亲切友好，通俗易懂，不要使用生硬的专业术语
+   - 遇到你不知道的问题，不要编造信息，礼貌告知用户可以留下联系方式，我们会有专人对接
+   - 禁止回答任何违法违规、低俗色情的内容
+   - 回答尽量简洁明了，不要长篇大论
+`;
+  // 3. Deepseek API地址（无需修改，官方默认地址）
+  const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+  // 4. 本地存储的key（无需修改）
+  const CHAT_STORAGE_KEY = "wangye_ai_chat_history";
+  // ======================================================================
 
-    // DOM 元素
-    const chatPage = document.getElementById('chatPage');
-    const profilePage = document.getElementById('profilePage');
-    const navLinks = document.querySelectorAll('.nav-link');
-    const messagesDiv = document.getElementById('messagesArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendMsgBtn');
-    const uploadBtn = document.getElementById('uploadImgBtn');
-    const authButtonsDiv = document.getElementById('authButtons');
-    const userInfoDiv = document.getElementById('userInfo');
-    const userEmailSpan = document.getElementById('userEmailSpan');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const logoutBtnProfile = document.getElementById('logoutBtnProfile');
-    const loginBtn = document.getElementById('loginBtn');
-    const modal = document.getElementById('authModal');
-    const closeModalBtn = document.getElementById('closeModalBtn');
-    const tabs = document.querySelectorAll('.tab');
-    const profileEmail = document.getElementById('profileEmail');
-    const avatarImg = document.getElementById('avatarImg');
-    const modelSelect = document.getElementById('modelSelect');
-    const memoryToggle = document.getElementById('memoryToggle');
+  // 页面元素
+  const slider = document.querySelector('.pill-slider');
+  const thumb = document.querySelector('.slider-thumb');
+  const items = document.querySelectorAll('.slider-item');
+  const contentTop = document.querySelector('.slider-content-top');
+  const displacementMap = document.getElementById('displacement-map');
+  const redChannel = document.getElementById('red-channel');
+  const greenChannel = document.getElementById('green-channel');
+  const blueChannel = document.getElementById('blue-channel');
+  // 三个页面
+  const pages = [
+    document.getElementById('home'),
+    document.getElementById('product'),
+    document.getElementById('contact')
+  ];
+  // AI客服元素
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const errorTip = document.getElementById('error-tip');
 
-    // 辅助函数
-    function showToast(msg) {
-        const toast = document.getElementById('toastMsg');
-        toast.textContent = msg;
-        toast.classList.remove('hidden');
-        setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
+  let itemInfos = [];
+  let currentIndex = 0;
+  let isDragging = false;
+  let startX = 0;
+  let startLeft = 0;
+  let isSending = false; // 发送中状态
 
-    function escapeHtml(str) {
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m;
-        });
-    }
-
-    function appendMessage(content, isUser = false) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${isUser ? 'user-message' : ''}`;
-        msgDiv.innerHTML = `<div class="message-avatar">${isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-feather-alt"></i>'}</div><div class="message-content">${escapeHtml(content)}</div>`;
-        messagesDiv.appendChild(msgDiv);
-        msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    // 更新UI
-    async function updateAuthUI() {
-        if (currentToken) {
-            authButtonsDiv.classList.add('hidden');
-            userInfoDiv.classList.remove('hidden');
-            try {
-                const res = await fetch(`${API_BASE}/api/user`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
-                if (res.ok) {
-                    currentUser = await res.json();
-                    userEmailSpan.textContent = currentUser.email;
-                    profileEmail.textContent = currentUser.email;
-                    avatarImg.src = currentUser.avatar;
-                    modelSelect.value = currentUser.model;
-                    if (currentUser.memoryEnabled) memoryToggle.classList.add('active');
-                    else memoryToggle.classList.remove('active');
-                } else {
-                    throw new Error();
-                }
-            } catch (e) {
-                logout();
-            }
-        } else {
-            authButtonsDiv.classList.remove('hidden');
-            userInfoDiv.classList.add('hidden');
-            currentUser = null;
-            profileEmail.textContent = '';
-            avatarImg.src = '';
-        }
-    }
-
-    function logout() {
-        currentToken = null;
-        currentUser = null;
-        localStorage.removeItem('pinecone_token');
-        updateAuthUI();
-        showToast('已退出登录');
-        messagesDiv.innerHTML = `<div class="message"><div class="message-avatar"><i class="fas fa-brain"></i></div><div class="message-content">✨ 已登出，请重新登录继续使用松果AI~</div></div>`;
-    }
-
-    // 发送消息
-    async function sendMessage() {
-        if (!currentToken) { showToast('请先登录'); return; }
-        const userMsg = messageInput.value.trim();
-        if (!userMsg && !pendingImageText) return;
-        let finalMsg = userMsg;
-        if (pendingImageText) {
-            finalMsg = userMsg ? `${userMsg}\n\n[图片内容]\n${pendingImageText}` : `请分析以下图片内容：\n${pendingImageText}`;
-        }
-        appendMessage(finalMsg, true);
-        messageInput.value = '';
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'message';
-        loadingDiv.innerHTML = `<div class="message-avatar"><i class="fas fa-spinner fa-pulse"></i></div><div class="message-content">思考中...</div>`;
-        messagesDiv.appendChild(loadingDiv);
-        try {
-            const res = await fetch(`${API_BASE}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
-                body: JSON.stringify({ message: finalMsg, imageText: pendingImageText })
-            });
-            const data = await res.json();
-            loadingDiv.remove();
-            if (res.ok) appendMessage(data.reply, false);
-            else appendMessage(`错误：${data.error}`, false);
-        } catch (err) {
-            loadingDiv.remove();
-            appendMessage('网络错误，请重试', false);
-        }
-        pendingImageText = ''; // 清除暂存图片文字
-    }
-
-    // OCR处理图片
-    async function handleImageUpload() {
-        if (!currentToken) { showToast('请先登录'); return; }
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            showToast('🔍 正在识别图片文字...');
-            try {
-                const { data: { text } } = await Tesseract.recognize(file, 'eng+chi_sim');
-                if (text.trim()) {
-                    pendingImageText = text.trim();
-                    showToast(`✅ 已提取文字，可直接发送问题，AI将结合图片内容回答`);
-                } else {
-                    showToast('未识别到文字，请尝试更清晰的图片');
-                }
-            } catch (err) {
-                showToast('OCR识别失败');
-            }
-        };
-        input.click();
-    }
-
-    // 设置记忆开关
-    async function setMemory(enabled) {
-        if (!currentToken) return;
-        const res = await fetch(`${API_BASE}/api/user/settings`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
-            body: JSON.stringify({ memoryEnabled: enabled })
-        });
-        if (res.ok) {
-            const data = await res.json();
-            currentUser.memoryEnabled = data.settings.memoryEnabled;
-            if (enabled) showToast('记忆已开启，我会记住我们的对话');
-            else showToast('记忆已关闭');
-        }
-    }
-
-    // 切换模型
-    async function setModel(model) {
-        if (!currentToken) return;
-        await fetch(`${API_BASE}/api/user/settings`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
-            body: JSON.stringify({ model })
-        });
-        showToast(`模型已切换至 ${model}`);
-    }
-
-    // 发送验证码（真实发送）
-    async function sendCode(email, type) {
-        if (!email) { showToast('请输入邮箱'); return false; }
-        try {
-            const res = await fetch(`${API_BASE}/api/send-code`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
-            });
-            if (res.ok) { showToast('验证码已发送至邮箱'); return true; }
-            else { const err = await res.json(); showToast(err.error); return false; }
-        } catch (e) { showToast('发送失败'); return false; }
-    }
-
-    // 滑块验证相关
-    let sliderIsPass = false;
-    let sliderTrajectory = [];
-    let sliderStartTime = 0;
-    let pendingSendCodeCallback = null;
-
-    function initSlider() {
-        const sliderContainer = document.getElementById('slider');
-        const sliderBtn = document.getElementById('btn');
-        const progressBar = document.getElementById('progress');
-        const tip = document.getElementById('tip');
-        let isDragging = false;
-        let startX = 0;
-        let sliderWidth = sliderContainer.offsetWidth;
-        let btnWidth = sliderBtn.offsetWidth;
-        let maxLeft = sliderWidth - btnWidth;
-
-        function updateDimensions() {
-            sliderWidth = sliderContainer.offsetWidth;
-            btnWidth = sliderBtn.offsetWidth;
-            maxLeft = sliderWidth - btnWidth;
-        }
-        window.addEventListener('resize', updateDimensions);
-
-        function startDrag(e) {
-            e.preventDefault();
-            if (sliderIsPass) return;
-            isDragging = true;
-            sliderBtn.classList.add('dragging');
-            startX = (e.clientX || e.touches[0].clientX) - sliderBtn.offsetLeft;
-            sliderStartTime = Date.now();
-            sliderTrajectory = [];
-        }
-
-        function onDrag(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            let x = (e.clientX || e.touches[0].clientX) - startX;
-            x = Math.min(Math.max(0, x), maxLeft);
-            sliderBtn.style.left = x + 'px';
-            progressBar.style.width = (x + btnWidth / 2) + 'px';
-
-            const now = Date.now();
-            if (sliderTrajectory.length === 0 || now - sliderTrajectory[sliderTrajectory.length-1].time > 5) {
-                sliderTrajectory.push({ x: x, time: now - sliderStartTime });
-            }
-        }
-
-        function endDrag() {
-            if (!isDragging) return;
-            isDragging = false;
-            sliderBtn.classList.remove('dragging');
-            const finalX = parseFloat(sliderBtn.style.left) || 0;
-            if (finalX >= maxLeft * 0.98) {
-                const trajectoryData = {
-                    duration: Date.now() - sliderStartTime,
-                    points: sliderTrajectory
-                };
-                fetch(`${API_BASE}/api/verify-slider`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(trajectoryData)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        sliderIsPass = true;
-                        tip.textContent = '验证成功';
-                        tip.style.color = '#0f9d58';
-                        document.getElementById('sliderModal').classList.add('hidden');
-                        if (pendingSendCodeCallback) {
-                            pendingSendCodeCallback();
-                            pendingSendCodeCallback = null;
-                        }
-                    } else {
-                        tip.textContent = '验证失败，请重试';
-                        tip.style.color = '#d93025';
-                        sliderBtn.style.left = '0px';
-                        progressBar.style.width = '0px';
-                        sliderTrajectory = [];
-                    }
-                })
-                .catch(() => {
-                    tip.textContent = '验证服务异常，请重试';
-                    tip.style.color = '#d93025';
-                    sliderBtn.style.left = '0px';
-                    progressBar.style.width = '0px';
-                    sliderTrajectory = [];
-                });
-            } else {
-                sliderBtn.style.left = '0px';
-                progressBar.style.width = '0px';
-                sliderTrajectory = [];
-                tip.textContent = '请拖动到最右侧';
-                tip.style.color = '#666';
-            }
-        }
-
-        sliderBtn.addEventListener('mousedown', startDrag);
-        document.addEventListener('mousemove', onDrag);
-        document.addEventListener('mouseup', endDrag);
-        sliderBtn.addEventListener('touchstart', startDrag, { passive: false });
-        document.addEventListener('touchmove', onDrag, { passive: false });
-        document.addEventListener('touchend', endDrag);
-    }
-
-    function showSlider(callback) {
-        sliderIsPass = false;
-        const sliderBtn = document.getElementById('btn');
-        const progressBar = document.getElementById('progress');
-        const tip = document.getElementById('tip');
-        sliderBtn.style.left = '0px';
-        progressBar.style.width = '0px';
-        tip.textContent = '按住滑块，拖动到最右边';
-        tip.style.color = '#666';
-        pendingSendCodeCallback = callback;
-        document.getElementById('sliderModal').classList.remove('hidden');
-    }
-
-    function sendCodeWithSlider(email, type) {
-        showSlider(() => {
-            sendCode(email, type);
-        });
-    }
-
-    // 天气相关
-    let weatherRefreshInterval = null;
-
-    async function fetchWeather() {
-        try {
-            const res = await fetch(`${API_BASE}/api/weather`);
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('weatherTemp').innerText = `${data.temperature}°C`;
-                document.getElementById('weatherDesc').innerText = data.text;
-            } else {
-                console.error('天气获取失败');
-            }
-        } catch (err) {
-            console.error('天气接口错误', err);
-        }
-    }
-
-    function startWeatherRefresh() {
-        fetchWeather();
-        if (weatherRefreshInterval) clearInterval(weatherRefreshInterval);
-        weatherRefreshInterval = setInterval(fetchWeather, 60 * 60 * 1000);
-    }
-
-    // 模态框tab切换
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        document.getElementById(`tab${tabId}`).classList.add('active');
-        tabs.forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
-    }
-
-    // 事件绑定
-    sendBtn.onclick = sendMessage;
-    uploadBtn.onclick = handleImageUpload;
-    messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-    logoutBtn.onclick = logout;
-    logoutBtnProfile.onclick = logout;
-    loginBtn.onclick = () => modal.classList.remove('hidden');
-    document.getElementById('refreshWeatherBtn').addEventListener('click', fetchWeather);
-
-    navLinks.forEach(link => {
-        link.onclick = () => {
-            const page = link.dataset.page;
-            navLinks.forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            if (page === 'chat') {
-                chatPage.classList.remove('hidden');
-                profilePage.classList.add('hidden');
-            } else {
-                chatPage.classList.add('hidden');
-                profilePage.classList.remove('hidden');
-                updateAuthUI();
-            }
-        };
+  // ==================== 页面切换核心逻辑 ====================
+  function switchPage(index) {
+    pages.forEach((p, i) => {
+      p.classList.toggle('active', i === index);
     });
-    document.getElementById('homeLogoBtn').onclick = () => { navLinks[0].click(); };
+    // 切换到客服页面时，自动滚动到底部
+    if (index === 2) {
+      scrollToBottom();
+    }
+  }
 
-    closeModalBtn.onclick = () => modal.classList.add('hidden');
-    tabs.forEach(tab => {
-        tab.onclick = () => switchTab(tab.dataset.tab);
+  function syncTopContentWidth() {
+    const sliderWidth = slider.getBoundingClientRect().width;
+    contentTop.style.width = `${sliderWidth}px`;
+    contentTop.style.minWidth = `${sliderWidth}px`;
+  }
+
+  function generateDisplacementMap() {
+    const rect = slider.getBoundingClientRect();
+    const actualWidth = rect?.width || 720;
+    const actualHeight = rect?.height || 60;
+    const borderRadius = 9999;
+    const borderWidth = 0.07;
+    const edgeSize = Math.min(actualWidth, actualHeight) * (borderWidth * 0.5);
+    const brightness = 50;
+    const opacity = 0.93;
+    const blur = 11;
+    const mixBlendMode = 'difference';
+
+    const svgContent = `
+      <svg viewBox="0 0 ${actualWidth} ${actualHeight}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="red-grad" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#0000"/>
+            <stop offset="100%" stop-color="red"/>
+          </linearGradient>
+          <linearGradient id="blue-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0000"/>
+            <stop offset="100%" stop-color="blue"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" fill="black"></rect>
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" rx="${borderRadius}" fill="url(#red-grad)" />
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" rx="${borderRadius}" fill="url(#blue-grad)" style="mix-blend-mode: ${mixBlendMode}" />
+        <rect x="${edgeSize}" y="${edgeSize}" width="${actualWidth - edgeSize * 2}" height="${actualHeight - edgeSize * 2}" rx="${borderRadius}" fill="hsl(0 0% ${brightness}% / ${opacity})" style="filter:blur(${blur}px)" />
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
+  }
+
+  function updateGlassMap() {
+    displacementMap.setAttribute('href', generateDisplacementMap());
+    redChannel.setAttribute('scale', '-180');
+    greenChannel.setAttribute('scale', '-170');
+    blueChannel.setAttribute('scale', '-160');
+  }
+
+  function updateItemInfos() {
+    const sliderRect = slider.getBoundingClientRect();
+    itemInfos = Array.from(items).map(item => {
+      const itemRect = item.getBoundingClientRect();
+      return {
+        left: itemRect.left - sliderRect.left,
+        width: itemRect.width
+      };
     });
+  }
 
-    // 验证码登录
-    document.getElementById('sendCodeLogin').onclick = () => {
-        const email = document.getElementById('codeEmail').value;
-        if (email) sendCodeWithSlider(email, 'login');
-        else showToast('请输入邮箱');
-    };
-    document.getElementById('submitCodeLogin').onclick = async () => {
-        const email = document.getElementById('codeEmail').value;
-        const code = document.getElementById('codeValue').value;
-        if (!email || !code) return;
-        const res = await fetch(`${API_BASE}/api/login-with-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
-        if (res.ok) {
-            const data = await res.json();
-            currentToken = data.token; localStorage.setItem('pinecone_token', currentToken);
-            updateAuthUI(); modal.classList.add('hidden'); showToast('登录成功');
-        } else { const err = await res.json(); showToast(err.error); }
-    };
-    // 密码登录
-    document.getElementById('submitPwdLogin').onclick = async () => {
-        const email = document.getElementById('pwdEmail').value;
-        const password = document.getElementById('pwdPassword').value;
-        const res = await fetch(`${API_BASE}/api/login-with-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-        if (res.ok) {
-            const data = await res.json();
-            currentToken = data.token; localStorage.setItem('pinecone_token', currentToken);
-            updateAuthUI(); modal.classList.add('hidden'); showToast('登录成功');
-        } else { const err = await res.json(); showToast(err.error); }
-    };
-    // 注册
-    document.getElementById('sendCodeReg').onclick = () => {
-        const email = document.getElementById('regEmail').value;
-        if (email) sendCodeWithSlider(email, 'reg');
-        else showToast('请输入邮箱');
-    };
-    document.getElementById('submitRegister').onclick = async () => {
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
-        const code = document.getElementById('regCode').value;
-        const res = await fetch(`${API_BASE}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, code }) });
-        if (res.ok) { showToast('注册成功，请登录'); switchTab('codeLogin'); }
-        else { const err = await res.json(); showToast(err.error); }
-    };
-    // 重置密码
-    document.getElementById('sendCodeReset').onclick = () => {
-        const email = document.getElementById('resetEmail').value;
-        if (email) sendCodeWithSlider(email, 'reset');
-        else showToast('请输入邮箱');
-    };
-    document.getElementById('submitReset').onclick = async () => {
-        const email = document.getElementById('resetEmail').value;
-        const newPassword = document.getElementById('resetNewPwd').value;
-        const code = document.getElementById('resetCode').value;
-        const res = await fetch(`${API_BASE}/api/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, newPassword, code }) });
-        if (res.ok) { showToast('密码重置成功'); switchTab('codeLogin'); }
-        else { const err = await res.json(); showToast(err.error); }
-    };
+  function setThumbToItem(index) {
+    if (!itemInfos[index]) return;
+    const { left, width } = itemInfos[index];
+    thumb.style.left = `${left}px`;
+    thumb.style.width = `${width}px`;
+    thumb.style.setProperty('--current-width', `${width}px`);
+    contentTop.style.transform = `translateX(-${left}px)`;
+    currentIndex = index;
+    switchPage(index);
+  }
 
-    // 个人中心设置
-    memoryToggle.onclick = () => {
-        const newState = !memoryToggle.classList.contains('active');
-        setMemory(newState);
-        memoryToggle.classList.toggle('active', newState);
-    };
-    modelSelect.onchange = (e) => setModel(e.target.value);
+  function fullUpdate() {
+    syncTopContentWidth();
+    updateItemInfos();
+    updateGlassMap();
+    setThumbToItem(currentIndex);
+  }
 
-    // 鼠标移动光效
-    document.body.addEventListener('mousemove', (e) => {
-        const x = (e.clientX / window.innerWidth) * 100;
-        const y = (e.clientY / window.innerHeight) * 100;
-        document.body.style.setProperty('--x', `${x}%`);
-        document.body.style.setProperty('--y', `${y}%`);
+  function init() {
+    fullUpdate();
+    initChat(); // 初始化AI客服
+  }
+
+  // 点击切换滑块
+  items.forEach((item, index) => {
+    item.addEventListener('click', () => setThumbToItem(index));
+  });
+
+  // 鼠标拖拽逻辑
+  thumb.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startLeft = parseFloat(thumb.style.left) || 0;
+    thumb.classList.add('active');
+    thumb.style.transition = 'height 0.25s var(--bounce-easing), width 0.25s var(--bounce-easing), background 0.25s var(--bounce-easing), box-shadow 0.25s var(--bounce-easing)';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const moveOffset = e.clientX - startX;
+    let newLeft = startLeft + moveOffset;
+    const maxLeft = slider.offsetWidth - thumb.offsetWidth;
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    thumb.style.left = `${newLeft}px`;
+    contentTop.style.transform = `translateX(-${newLeft}px)`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    thumb.classList.remove('active');
+    thumb.style.transition = 'left 0.3s var(--bounce-easing), width 0.3s var(--bounce-easing), height 0.25s var(--bounce-easing), background 0.25s var(--bounce-easing), box-shadow 0.25s var(--bounce-easing)';
+    document.body.style.userSelect = '';
+
+    const thumbCenter = parseFloat(thumb.style.left) + thumb.offsetWidth / 2;
+    let closestIndex = 0;
+    let minDistance = Infinity;
+    itemInfos.forEach((item, index) => {
+      const itemCenter = item.left + item.width / 2;
+      const distance = Math.abs(thumbCenter - itemCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = index;
+      }
     });
+    setThumbToItem(closestIndex);
+  });
 
-    // 启动
-    initSlider();
-    startWeatherRefresh();
-    updateAuthUI();
+  // 移动端触摸逻辑
+  thumb.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    startX = e.changedTouches[0].clientX;
+    startLeft = parseFloat(thumb.style.left) || 0;
+    thumb.classList.add('active');
+    document.body.style.userSelect = 'none';
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const moveOffset = e.changedTouches[0].clientX - startX;
+    let newLeft = startLeft + moveOffset;
+    const maxLeft = slider.offsetWidth - thumb.offsetWidth;
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    thumb.style.left = `${newLeft}px`;
+    contentTop.style.transform = `translateX(-${newLeft}px)`;
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    thumb.classList.remove('active');
+    document.body.style.userSelect = '';
+
+    const thumbCenter = parseFloat(thumb.style.left) + thumb.offsetWidth / 2;
+    let closestIndex = 0;
+    let minDistance = Infinity;
+    itemInfos.forEach((item, index) => {
+      const itemCenter = item.left + item.width / 2;
+      const distance = Math.abs(thumbCenter - itemCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = index;
+      }
+    });
+    setThumbToItem(closestIndex);
+  });
+
+  // ==================== AI客服核心逻辑 ====================
+  // 初始化聊天
+  function initChat() {
+    loadChatHistory(); // 加载本地聊天记录
+    bindChatEvent(); // 绑定发送事件
+  }
+
+  // 渲染单条消息
+  function renderMessage(role, content, isLoading = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message-item message-${role}`;
+    messageDiv.dataset.id = Date.now(); // 唯一ID，用于替换加载状态
+
+    if (isLoading) {
+      messageDiv.innerHTML = `
+        <div class="msg-bubble">
+          <div class="loading-dot">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      `;
+    } else {
+      messageDiv.innerHTML = `<div class="msg-bubble">${content}</div>`;
+    }
+
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+    return messageDiv.dataset.id;
+  }
+
+  // 滚动到底部
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // 保存聊天记录到本地
+  function saveChatHistory(messages) {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  }
+
+  // 加载本地聊天记录
+  function loadChatHistory() {
+    const history = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (history) {
+      const messages = JSON.parse(history);
+      messages.forEach(msg => {
+        renderMessage(msg.role, msg.content);
+      });
+    } else {
+      // 首次进入，发送欢迎语
+      const welcomeMsg = {
+        role: 'ai',
+        content: '您好！我是我的王爷·AI歌者的专属客服，请问有什么可以帮您的？'
+      };
+      renderMessage(welcomeMsg.role, welcomeMsg.content);
+      saveChatHistory([welcomeMsg]);
+    }
+  }
+
+  // 获取当前聊天记录
+  function getChatHistory() {
+    const history = localStorage.getItem(CHAT_STORAGE_KEY);
+    return history ? JSON.parse(history) : [];
+  }
+
+  // 调用Deepseek API
+  async function callDeepseekAPI(messages) {
+    // 拼接系统提示词+历史消息
+    const requestMessages = [
+      { role: 'system', content: AI_SYSTEM_PROMPT },
+      ...messages
+    ];
+
+    try {
+      const response = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: requestMessages,
+          temperature: 0.7, // 数值越小回答越稳定，越大越有创意
+          stream: false
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'API请求失败，请检查密钥是否正确');
+      }
+
+      return data.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('API调用失败：', error);
+      throw error;
+    }
+  }
+
+  // 发送消息核心逻辑
+  async function sendMessage() {
+    const content = chatInput.value.trim();
+    if (!content || isSending) return;
+    if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === '这里填你的Deepseek API密钥') {
+      errorTip.textContent = '请先在代码中填写你的Deepseek API密钥';
+      return;
+    }
+
+    // 清空输入框和错误提示
+    chatInput.value = '';
+    errorTip.textContent = '';
+    isSending = true;
+    sendBtn.disabled = true;
+
+    // 1. 渲染用户消息
+    const userMsg = { role: 'user', content };
+    renderMessage(userMsg.role, userMsg.content);
+
+    // 2. 更新本地历史记录
+    const history = getChatHistory();
+    const newHistory = [...history, userMsg];
+    saveChatHistory(newHistory);
+
+    // 3. 渲染AI加载状态
+    const loadingId = renderMessage('ai', '', true);
+
+    try {
+      // 4. 调用API获取回复
+      const aiReply = await callDeepseekAPI(newHistory);
+      
+      // 5. 替换加载状态为真实回复
+      const loadingMsg = document.querySelector(`[data-id="${loadingId}"]`);
+      if (loadingMsg) {
+        loadingMsg.innerHTML = `<div class="msg-bubble">${aiReply}</div>`;
+      }
+
+      // 6. 保存AI回复到本地
+      const aiMsg = { role: 'ai', content: aiReply };
+      saveChatHistory([...newHistory, aiMsg]);
+
+    } catch (error) {
+      // 错误处理
+      const loadingMsg = document.querySelector(`[data-id="${loadingId}"]`);
+      const errorContent = '抱歉，请求失败了，请检查API密钥是否正确，或稍后再试~';
+      if (loadingMsg) {
+        loadingMsg.innerHTML = `<div class="msg-bubble">${errorContent}</div>`;
+      }
+      errorTip.textContent = error.message;
+      // 保存错误提示到本地
+      const aiMsg = { role: 'ai', content: errorContent };
+      saveChatHistory([...newHistory, aiMsg]);
+    } finally {
+      isSending = false;
+      sendBtn.disabled = false;
+      scrollToBottom();
+    }
+  }
+
+  // 绑定聊天事件
+  function bindChatEvent() {
+    // 点击发送按钮
+    sendBtn.addEventListener('click', sendMessage);
+    // 回车发送
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  // 窗口大小变化监听
+  window.addEventListener('resize', fullUpdate);
+  // 页面加载完成初始化
+  window.addEventListener('DOMContentLoaded', init);
+  window.addEventListener('load', fullUpdate);
 </script>
 </body>
 </html>
