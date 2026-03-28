@@ -3,29 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI生图</title>
+<title>AI生图工具</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 p-4">
-<div class="max-w-xl mx-auto bg-white p-5 rounded-xl shadow">
-  <h2 class="text-center font-bold mb-4">AI 生图工具</h2>
+<body class="bg-slate-100 p-4">
+<div class="max-w-xl mx-auto bg-white p-6 rounded-2xl shadow">
+  <h2 class="text-center text-xl font-bold mb-5">GRS AI 生图</h2>
 
-  <div class="mb-3">
-    <label class="block mb-1">提示词</label>
-    <textarea id="prompt" class="w-full border p-3 rounded h-24" placeholder="输入画面描述"></textarea>
+  <div class="mb-4">
+    <label class="block font-medium mb-1">提示词</label>
+    <textarea id="prompt" class="w-full border border-slate-300 rounded-lg p-3 h-28" placeholder="例如：一只可爱的小猫，治愈系，高清"></textarea>
   </div>
 
-  <div class="mb-3">
-    <label class="block mb-1">比例</label>
-    <input type="range" id="ratio" min="1" max="4" value="1">
-    <span id="ratioTxt">1:1</span>
+  <div class="mb-5">
+    <div class="flex justify-between items-center mb-1">
+      <label class="font-medium">图片比例</label>
+      <span id="ratioTxt" class="text-blue-600">1:1</span>
+    </div>
+    <input type="range" id="ratio" min="1" max="4" value="1" class="w-full">
   </div>
 
-  <button id="generate" class="w-full bg-blue-500 text-white py-2 rounded">生成图片</button>
+  <button id="generate" class="w-full bg-blue-600 text-white py-3 rounded-lg">生成图片</button>
 
-  <div class="mt-4 p-4 border-dashed border text-center min-h-[260px]">
-    <img id="result" class="max-h-[250px] hidden">
-    <p id="tip">等待生成</p>
+  <div class="mt-5 p-5 border-dashed border rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+    <img id="result" class="max-h-[300px] rounded-lg hidden">
+    <p id="tip" class="text-slate-500">图片将显示在这里</p>
   </div>
 </div>
 
@@ -48,7 +50,7 @@ document.getElementById('generate').onclick = async ()=>{
 
   btn.disabled = true;
   btn.textContent = '生成中...';
-  tip.textContent = '请求中...';
+  tip.textContent = '请求接口中...';
   img.classList.add('hidden');
 
   try {
@@ -61,13 +63,13 @@ document.getElementById('generate').onclick = async ()=>{
       })
     });
     const data = await res.json();
-    const imgUrl = data?.url;
+    const imgUrl = data?.data?.url || data?.url || data?.image_url;
     if(imgUrl){
       img.src = imgUrl;
       img.classList.remove('hidden');
       tip.textContent = '生成成功';
     }else{
-      tip.textContent = '失败：' + (data.msg || '无图片地址');
+      tip.textContent = '失败：' + (data?.msg || '无图片地址');
     }
   } catch(e){
     tip.textContent = '请求失败';
