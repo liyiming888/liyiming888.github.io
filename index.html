@@ -2,83 +2,78 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI生图工具</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Cloudflare 人机验证 · 纯前端版</title>
+<!-- 必须引入 Cloudflare 验证脚本 -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+  body {
+    padding: 40px;
+    font-family: system-ui, sans-serif;
+  }
+  .form-box {
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    box-sizing: border-box;
+  }
+  button {
+    padding: 10px 20px;
+    background: #0070f3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+</style>
 </head>
-<body class="bg-slate-100 p-4">
-<div class="max-w-xl mx-auto bg-white p-6 rounded-2xl shadow">
-  <h2 class="text-center text-xl font-bold mb-5">GRS AI 生图</h2>
 
-  <div class="mb-4">
-    <label class="block font-medium mb-1">提示词</label>
-    <textarea id="prompt" class="w-full border border-slate-300 rounded-lg p-3 h-28" placeholder="例如：一只可爱的小猫，治愈系，高清"></textarea>
-  </div>
+<body>
+<div class="form-box">
+  <h3>登录验证</h3>
+  <form id="login-form">
+    <input type="text" placeholder="用户名" required>
+    <input type="password" placeholder="密码" required>
 
-  <div class="mb-5">
-    <div class="flex justify-between items-center mb-1">
-      <label class="font-medium">图片比例</label>
-      <span id="ratioTxt" class="text-blue-600">1:1</span>
-    </div>
-    <input type="range" id="ratio" min="1" max="4" value="1" class="w-full">
-  </div>
+    <!-- Cloudflare 人机验证容器 -->
+    <div id="cf-turnstile"></div>
+    <br>
 
-  <button id="generate" class="w-full bg-blue-600 text-white py-3 rounded-lg">生成图片</button>
-
-  <div class="mt-5 p-5 border-dashed border rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
-    <img id="result" class="max-h-[300px] rounded-lg hidden">
-    <p id="tip" class="text-slate-500">图片将显示在这里</p>
-  </div>
+    <button type="submit">提交登录</button>
+  </form>
 </div>
 
 <script>
-const ratioMap = {1:"1:1", 2:"4:3", 3:"16:9", 4:"9:16"};
-const ratio = document.getElementById('ratio');
-const ratioTxt = document.getElementById('ratioTxt');
-
-ratio.addEventListener('input', ()=>{
-  ratioTxt.textContent = ratioMap[ratio.value];
+// 1. 渲染验证组件
+turnstile.render('#cf-turnstile', {
+  // 这是 Cloudflare 官方公开测试 KEY，可直接用于开发
+  // 上线时换成你自己的 sitekey 即可
+  sitekey: '0x4AAAAAACxKvjF618FHOono',
+  language: 'zh-CN',
+  theme: 'auto',
+  callback: function(token) {
+    console.log('✅ 验证成功，token：', token);
+  }
 });
 
-document.getElementById('generate').onclick = async ()=>{
-  const prompt = document.getElementById('prompt').value.trim();
-  if(!prompt) return alert('请输入提示词');
+// 2. 提交前校验
+const form = document.getElementById('login-form');
+form.addEventListener('submit', function(e) {
+  const token = turnstile.getResponse();
 
-  const btn = document.getElementById('generate');
-  const tip = document.getElementById('tip');
-  const img = document.getElementById('result');
-
-  btn.disabled = true;
-  btn.textContent = '生成中...';
-  tip.textContent = '请求接口中...';
-  img.classList.add('hidden');
-
-  try {
-    const res = await fetch("proxy.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: prompt,
-        size: ratioMap[ratio.value]
-      })
-    });
-    const data = await res.json();
-    const imgUrl = data?.data?.url || data?.url || data?.image_url;
-    if(imgUrl){
-      img.src = imgUrl;
-      img.classList.remove('hidden');
-      tip.textContent = '生成成功';
-    }else{
-      tip.textContent = '失败：' + (data?.msg || '无图片地址');
-    }
-  } catch(e){
-    tip.textContent = '请求失败';
-    console.error(e);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '生成图片';
+  // 前端拦截：没验证就不让提交
+  if (!token) {
+    e.preventDefault();
+    alert('请完成人机验证');
+    return;
   }
-};
+
+  // 验证通过，允许提交
+  alert('验证通过，表单已提交');
+});
 </script>
 </body>
 </html>
