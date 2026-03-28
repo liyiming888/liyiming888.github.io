@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 
-$api_key = "sk-5318e6e1c6604c5398b4de7f9740be51";
+$api_key = "sk-89c220f97a2f4b78af3358e534f8b72e";
 $url = "https://grsai.dakka.com.cn/v1/draw/completions";
 
 $input = json_decode(file_get_contents("php://input"), true);
