@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI生图平台 - 登录注册</title>
+    <!-- Cloudflare Turnstile 人机验证脚本 -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         * {margin: 0;padding: 0;box-sizing: border-box;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;}
         body {min-height: 100vh;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);display: flex;align-items: center;justify-content: center;padding: 20px;}
@@ -18,8 +20,9 @@
         .form-label {display: block;margin-bottom: 8px;font-size: 14px;color: #333;}
         .form-input {width: 100%;height: 48px;padding: 0 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;transition: border-color 0.3s;}
         .form-input:focus {outline: none;border-color: #667eea;}
-        .input-group {display: flex;gap: 10px;}
-        .input-group .form-input {flex: 1;}
+        .input-group {display: flex;gap: 10px;flex-direction: column;}
+        .input-row {display: flex;gap: 10px;align-items: center;}
+        .input-row .form-input {flex: 1;}
         .code-btn {width: 120px;height: 48px;border: none;border-radius: 8px;background: #667eea;color: white;font-size: 14px;cursor: pointer;transition: background 0.3s;flex-shrink: 0;}
         .code-btn:disabled {background: #ccc;cursor: not-allowed;}
         .submit-btn {width: 100%;height: 48px;border: none;border-radius: 8px;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);color: white;font-size: 16px;font-weight: 500;cursor: pointer;transition: transform 0.2s;margin-top: 10px;}
@@ -30,6 +33,9 @@
         .message {padding: 12px 16px;border-radius: 8px;margin-bottom: 20px;font-size: 14px;display: none;}
         .message.success {background: #f6ffed;color: #52c41a;border: 1px solid #b7eb8f;display: block;}
         .message.error {background: #fff2f0;color: #ff4d4f;border: 1px solid #ffccc7;display: block;}
+        /* 人机验证容器样式 */
+        .cf-turnstile {margin-bottom: 10px;width: 100%;}
+        .cf-turnstile iframe {width: 100% !important;border-radius: 8px;}
     </style>
 </head>
 <body>
@@ -55,7 +61,9 @@
                 </div>
                 <div class="form-group" id="codeGroup" style="display: none;">
                     <label class="form-label">验证码</label>
-                    <div class="input-group">
+                    <!-- 验证码登录 人机验证容器 -->
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="login_code" id="loginTurnstile"></div>
+                    <div class="input-row">
                         <input type="text" class="form-input" id="loginCode" placeholder="请输入验证码">
                         <button class="code-btn" id="loginCodeBtn">获取验证码</button>
                     </div>
@@ -73,7 +81,9 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <div class="input-group">
+                    <!-- 注册 人机验证容器 -->
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="register_code" id="registerTurnstile"></div>
+                    <div class="input-row">
                         <input type="text" class="form-input" id="registerCode" placeholder="请输入验证码">
                         <button class="code-btn" id="registerCodeBtn">获取验证码</button>
                     </div>
@@ -91,7 +101,9 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <div class="input-group">
+                    <!-- 找回密码 人机验证容器 -->
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="reset_code" id="resetTurnstile"></div>
+                    <div class="input-row">
                         <input type="text" class="form-input" id="resetCode" placeholder="请输入验证码">
                         <button class="code-btn" id="resetCodeBtn">获取验证码</button>
                     </div>
@@ -117,6 +129,7 @@
             setTimeout(() => msgEl.className = 'message', 3000);
         }
 
+        // 标签切换逻辑
         document.querySelectorAll('.tab-item').forEach(item => {
             item.addEventListener('click', () => {
                 const tab = item.dataset.tab;
@@ -125,9 +138,14 @@
                 document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
                 document.getElementById(tab).classList.add('active');
                 showMessage('', '');
+                // 切换标签时重置人机验证
+                turnstile.reset('#registerTurnstile');
+                turnstile.reset('#loginTurnstile');
+                turnstile.reset('#resetTurnstile');
             });
         });
 
+        // 登录方式切换
         document.getElementById('loginTypeSwitch').addEventListener('click', () => {
             isPasswordLogin = !isPasswordLogin;
             if (isPasswordLogin) {
@@ -139,13 +157,24 @@
                 document.getElementById('codeGroup').style.display = 'block';
                 document.getElementById('loginTypeSwitch').textContent = '使用密码登录';
             }
+            turnstile.reset('#loginTurnstile');
         });
 
-        async function sendCode(email, type, btnEl) {
+        // 发送验证码核心逻辑（强制人机验证）
+        async function sendCode(email, type, btnEl, turnstileId) {
+            // 1. 校验邮箱格式
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 showMessage('请输入正确的邮箱地址');
                 return;
             }
+            // 2. 获取人机验证token，校验是否完成验证
+            const cfToken = turnstile.getResponse(turnstileId);
+            if (!cfToken) {
+                showMessage('请先完成人机验证');
+                return;
+            }
+
+            // 3. 倒计时逻辑
             let countdown = 60;
             btnEl.disabled = true;
             btnEl.textContent = `${countdown}s后重发`;
@@ -160,43 +189,54 @@
             }, 1000);
 
             try {
+                // 4. 发送请求，携带人机验证token
                 const res = await fetch(API_BASE + 'auth.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'send_code', email, type })
+                    body: JSON.stringify({ 
+                        action: 'send_code', 
+                        email, 
+                        type,
+                        cf_turnstile_token: cfToken // 人机验证token
+                    })
                 });
                 const data = await res.json();
                 if (data.code !== 0) {
                     clearInterval(timer);
                     btnEl.disabled = false;
                     btnEl.textContent = '获取验证码';
+                    turnstile.reset(turnstileId); // 验证失败重置组件
                     showMessage(data.msg);
                 } else {
                     showMessage('验证码发送成功，请注意查收', 'success');
+                    turnstile.reset(turnstileId); // 发送成功重置组件
                 }
             } catch (e) {
                 clearInterval(timer);
                 btnEl.disabled = false;
                 btnEl.textContent = '获取验证码';
+                turnstile.reset(turnstileId);
                 showMessage('网络错误，请稍后重试');
             }
         }
 
+        // 三个发送验证码按钮绑定事件
         document.getElementById('registerCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('registerEmail').value;
-            sendCode(email, 'register', document.getElementById('registerCodeBtn'));
+            sendCode(email, 'register', document.getElementById('registerCodeBtn'), '#registerTurnstile');
         });
 
         document.getElementById('loginCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
-            sendCode(email, 'login', document.getElementById('loginCodeBtn'));
+            sendCode(email, 'login', document.getElementById('loginCodeBtn'), '#loginTurnstile');
         });
 
         document.getElementById('resetCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('resetEmail').value;
-            sendCode(email, 'reset', document.getElementById('resetCodeBtn'));
+            sendCode(email, 'reset', document.getElementById('resetCodeBtn'), '#resetTurnstile');
         });
 
+        // 注册逻辑
         document.getElementById('registerBtn').addEventListener('click', async () => {
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
@@ -241,6 +281,7 @@
             }
         });
 
+        // 登录逻辑
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
@@ -297,6 +338,7 @@
             }
         });
 
+        // 重置密码逻辑
         document.getElementById('resetBtn').addEventListener('click', async () => {
             const email = document.getElementById('resetEmail').value;
             const newPassword = document.getElementById('resetPassword').value;
