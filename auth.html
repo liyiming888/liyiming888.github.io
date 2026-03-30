@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI生图平台 - 登录注册</title>
+    <style>
+        * {margin: 0;padding: 0;box-sizing: border-box;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;}
+        body {min-height: 100vh;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);display: flex;align-items: center;justify-content: center;padding: 20px;}
+        .container {width: 100%;max-width: 400px;background: white;border-radius: 12px;box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);overflow: hidden;}
+        .tab-header {display: flex;border-bottom: 1px solid #eee;}
+        .tab-item {flex: 1;text-align: center;padding: 16px 0;cursor: pointer;font-size: 16px;color: #666;border-bottom: 3px solid transparent;transition: all 0.3s;}
+        .tab-item.active {color: #667eea;border-bottom-color: #667eea;font-weight: 500;}
+        .tab-content {padding: 30px 24px;}
+        .tab-pane {display: none;}
+        .tab-pane.active {display: block;}
+        .form-group {margin-bottom: 20px;}
+        .form-label {display: block;margin-bottom: 8px;font-size: 14px;color: #333;}
+        .form-input {width: 100%;height: 48px;padding: 0 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;transition: border-color 0.3s;}
+        .form-input:focus {outline: none;border-color: #667eea;}
+        .input-group {display: flex;gap: 10px;}
+        .input-group .form-input {flex: 1;}
+        .code-btn {width: 120px;height: 48px;border: none;border-radius: 8px;background: #667eea;color: white;font-size: 14px;cursor: pointer;transition: background 0.3s;flex-shrink: 0;}
+        .code-btn:disabled {background: #ccc;cursor: not-allowed;}
+        .submit-btn {width: 100%;height: 48px;border: none;border-radius: 8px;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);color: white;font-size: 16px;font-weight: 500;cursor: pointer;transition: transform 0.2s;margin-top: 10px;}
+        .submit-btn:active {transform: scale(0.98);}
+        .submit-btn:disabled {opacity: 0.6;cursor: not-allowed;}
+        .login-type-switch {text-align: right;margin-bottom: 20px;}
+        .switch-link {color: #667eea;font-size: 14px;cursor: pointer;}
+        .message {padding: 12px 16px;border-radius: 8px;margin-bottom: 20px;font-size: 14px;display: none;}
+        .message.success {background: #f6ffed;color: #52c41a;border: 1px solid #b7eb8f;display: block;}
+        .message.error {background: #fff2f0;color: #ff4d4f;border: 1px solid #ffccc7;display: block;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tab-header">
+            <div class="tab-item active" data-tab="login">登录</div>
+            <div class="tab-item" data-tab="register">注册</div>
+            <div class="tab-item" data-tab="reset">找回密码</div>
+        </div>
+        <div class="tab-content">
+            <div id="message" class="message"></div>
+            <div class="tab-pane active" id="login">
+                <div class="login-type-switch">
+                    <span class="switch-link" id="loginTypeSwitch">使用验证码登录</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-input" id="loginEmail" placeholder="请输入您的邮箱">
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="请输入您的密码">
+                </div>
+                <div class="form-group" id="codeGroup" style="display: none;">
+                    <label class="form-label">验证码</label>
+                    <div class="input-group">
+                        <input type="text" class="form-input" id="loginCode" placeholder="请输入验证码">
+                        <button class="code-btn" id="loginCodeBtn">获取验证码</button>
+                    </div>
+                </div>
+                <button class="submit-btn" id="loginBtn">登录</button>
+            </div>
+            <div class="tab-pane" id="register">
+                <div class="form-group">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-input" id="registerEmail" placeholder="请输入您的邮箱">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="registerPassword" placeholder="请设置6位以上密码">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">验证码</label>
+                    <div class="input-group">
+                        <input type="text" class="form-input" id="registerCode" placeholder="请输入验证码">
+                        <button class="code-btn" id="registerCodeBtn">获取验证码</button>
+                    </div>
+                </div>
+                <button class="submit-btn" id="registerBtn">注册</button>
+            </div>
+            <div class="tab-pane" id="reset">
+                <div class="form-group">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-input" id="resetEmail" placeholder="请输入您的邮箱">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">新密码</label>
+                    <input type="password" class="form-input" id="resetPassword" placeholder="请设置6位以上新密码">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">验证码</label>
+                    <div class="input-group">
+                        <input type="text" class="form-input" id="resetCode" placeholder="请输入验证码">
+                        <button class="code-btn" id="resetCodeBtn">获取验证码</button>
+                    </div>
+                </div>
+                <button class="submit-btn" id="resetBtn">重置密码</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://101.32.215.93:28850/';
+        let isPasswordLogin = true;
+
+        window.onload = () => {
+            if (localStorage.getItem('token')) window.location.href = 'index.html';
+        };
+
+        function showMessage(text, type = 'error') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            setTimeout(() => msgEl.className = 'message', 3000);
+        }
+
+        document.querySelectorAll('.tab-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const tab = item.dataset.tab;
+                document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                document.getElementById(tab).classList.add('active');
+                showMessage('', '');
+            });
+        });
+
+        document.getElementById('loginTypeSwitch').addEventListener('click', () => {
+            isPasswordLogin = !isPasswordLogin;
+            if (isPasswordLogin) {
+                document.getElementById('passwordGroup').style.display = 'block';
+                document.getElementById('codeGroup').style.display = 'none';
+                document.getElementById('loginTypeSwitch').textContent = '使用验证码登录';
+            } else {
+                document.getElementById('passwordGroup').style.display = 'none';
+                document.getElementById('codeGroup').style.display = 'block';
+                document.getElementById('loginTypeSwitch').textContent = '使用密码登录';
+            }
+        });
+
+        async function sendCode(email, type, btnEl) {
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入正确的邮箱地址');
+                return;
+            }
+            let countdown = 60;
+            btnEl.disabled = true;
+            btnEl.textContent = `${countdown}s后重发`;
+            const timer = setInterval(() => {
+                countdown--;
+                btnEl.textContent = `${countdown}s后重发`;
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    btnEl.disabled = false;
+                    btnEl.textContent = '获取验证码';
+                }
+            }, 1000);
+
+            try {
+                const res = await fetch(API_BASE + 'auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'send_code', email, type })
+                });
+                const data = await res.json();
+                if (data.code !== 0) {
+                    clearInterval(timer);
+                    btnEl.disabled = false;
+                    btnEl.textContent = '获取验证码';
+                    showMessage(data.msg);
+                } else {
+                    showMessage('验证码发送成功，请注意查收', 'success');
+                }
+            } catch (e) {
+                clearInterval(timer);
+                btnEl.disabled = false;
+                btnEl.textContent = '获取验证码';
+                showMessage('网络错误，请稍后重试');
+            }
+        }
+
+        document.getElementById('registerCodeBtn').addEventListener('click', () => {
+            const email = document.getElementById('registerEmail').value;
+            sendCode(email, 'register', document.getElementById('registerCodeBtn'));
+        });
+
+        document.getElementById('loginCodeBtn').addEventListener('click', () => {
+            const email = document.getElementById('loginEmail').value;
+            sendCode(email, 'login', document.getElementById('loginCodeBtn'));
+        });
+
+        document.getElementById('resetCodeBtn').addEventListener('click', () => {
+            const email = document.getElementById('resetEmail').value;
+            sendCode(email, 'reset', document.getElementById('resetCodeBtn'));
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const code = document.getElementById('registerCode').value;
+            const btn = document.getElementById('registerBtn');
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入正确的邮箱地址');
+                return;
+            }
+            if (password.length < 6) {
+                showMessage('密码长度不能少于6位');
+                return;
+            }
+            if (!code) {
+                showMessage('请输入验证码');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '注册中...';
+
+            try {
+                const res = await fetch(API_BASE + 'auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'register', email, password, code })
+                });
+                const data = await res.json();
+                if (data.code !== 0) {
+                    showMessage(data.msg);
+                } else {
+                    showMessage('注册成功，请登录', 'success');
+                    document.querySelector('[data-tab="login"]').click();
+                    document.getElementById('loginEmail').value = email;
+                }
+            } catch (e) {
+                showMessage('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '注册';
+            }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const code = document.getElementById('loginCode').value;
+            const btn = document.getElementById('loginBtn');
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入正确的邮箱地址');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            let body;
+            if (isPasswordLogin) {
+                if (!password) {
+                    showMessage('请输入密码');
+                    btn.disabled = false;
+                    btn.textContent = '登录';
+                    return;
+                }
+                body = JSON.stringify({ action: 'login_password', email, password });
+            } else {
+                if (!code) {
+                    showMessage('请输入验证码');
+                    btn.disabled = false;
+                    btn.textContent = '验证码登录';
+                    return;
+                }
+                body = JSON.stringify({ action: 'login_code', email, code });
+            }
+
+            try {
+                const res = await fetch(API_BASE + 'auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body
+                });
+                const data = await res.json();
+                if (data.code !== 0) {
+                    showMessage(data.msg);
+                } else {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('email', data.data.email);
+                    localStorage.setItem('quota', data.data.quota);
+                    showMessage('登录成功，正在跳转...', 'success');
+                    setTimeout(() => window.location.href = 'index.html', 1000);
+                }
+            } catch (e) {
+                showMessage('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isPasswordLogin ? '登录' : '验证码登录';
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', async () => {
+            const email = document.getElementById('resetEmail').value;
+            const newPassword = document.getElementById('resetPassword').value;
+            const code = document.getElementById('resetCode').value;
+            const btn = document.getElementById('resetBtn');
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入正确的邮箱地址');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showMessage('密码长度不能少于6位');
+                return;
+            }
+            if (!code) {
+                showMessage('请输入验证码');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '重置中...';
+
+            try {
+                const res = await fetch(API_BASE + 'auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reset_password', email, new_password: newPassword, code })
+                });
+                const data = await res.json();
+                if (data.code !== 0) {
+                    showMessage(data.msg);
+                } else {
+                    showMessage('密码重置成功，请登录', 'success');
+                    document.querySelector('[data-tab="login"]').click();
+                    document.getElementById('loginEmail').value = email;
+                }
+            } catch (e) {
+                showMessage('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '重置密码';
+            }
+        });
+    </script>
+</body>
+</html>
