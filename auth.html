@@ -20,8 +20,7 @@
         .form-label {display: block;margin-bottom: 8px;font-size: 14px;color: #333;}
         .form-input {width: 100%;height: 48px;padding: 0 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;transition: border-color 0.3s;}
         .form-input:focus {outline: none;border-color: #667eea;}
-        .input-group {display: flex;gap: 10px;flex-direction: column;}
-        .input-row {display: flex;gap: 10px;align-items: center;}
+        .input-row {display: flex;gap: 10px;align-items: center;margin-top: 10px;}
         .input-row .form-input {flex: 1;}
         .code-btn {width: 120px;height: 48px;border: none;border-radius: 8px;background: #667eea;color: white;font-size: 14px;cursor: pointer;transition: background 0.3s;flex-shrink: 0;}
         .code-btn:disabled {background: #ccc;cursor: not-allowed;}
@@ -34,7 +33,7 @@
         .message.success {background: #f6ffed;color: #52c41a;border: 1px solid #b7eb8f;display: block;}
         .message.error {background: #fff2f0;color: #ff4d4f;border: 1px solid #ffccc7;display: block;}
         /* 人机验证容器样式 */
-        .cf-turnstile {margin-bottom: 10px;width: 100%;}
+        .cf-turnstile {width: 100%;min-height: 65px;}
         .cf-turnstile iframe {width: 100% !important;border-radius: 8px;}
     </style>
 </head>
@@ -47,6 +46,7 @@
         </div>
         <div class="tab-content">
             <div id="message" class="message"></div>
+            <!-- 登录面板 -->
             <div class="tab-pane active" id="login">
                 <div class="login-type-switch">
                     <span class="switch-link" id="loginTypeSwitch">使用验证码登录</span>
@@ -61,8 +61,8 @@
                 </div>
                 <div class="form-group" id="codeGroup" style="display: none;">
                     <label class="form-label">验证码</label>
-                    <!-- 验证码登录 人机验证容器 -->
-                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="login_code" id="loginTurnstile"></div>
+                    <!-- 验证码登录 人机验证容器（手动渲染） -->
+                    <div class="cf-turnstile" id="loginTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="loginCode" placeholder="请输入验证码">
                         <button class="code-btn" id="loginCodeBtn">获取验证码</button>
@@ -70,6 +70,7 @@
                 </div>
                 <button class="submit-btn" id="loginBtn">登录</button>
             </div>
+            <!-- 注册面板 -->
             <div class="tab-pane" id="register">
                 <div class="form-group">
                     <label class="form-label">邮箱</label>
@@ -81,8 +82,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <!-- 注册 人机验证容器 -->
-                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="register_code" id="registerTurnstile"></div>
+                    <!-- 注册 人机验证容器（手动渲染） -->
+                    <div class="cf-turnstile" id="registerTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="registerCode" placeholder="请输入验证码">
                         <button class="code-btn" id="registerCodeBtn">获取验证码</button>
@@ -90,6 +91,7 @@
                 </div>
                 <button class="submit-btn" id="registerBtn">注册</button>
             </div>
+            <!-- 找回密码面板 -->
             <div class="tab-pane" id="reset">
                 <div class="form-group">
                     <label class="form-label">邮箱</label>
@@ -101,8 +103,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <!-- 找回密码 人机验证容器 -->
-                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-action="reset_code" id="resetTurnstile"></div>
+                    <!-- 找回密码 人机验证容器（手动渲染） -->
+                    <div class="cf-turnstile" id="resetTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="resetCode" placeholder="请输入验证码">
                         <button class="code-btn" id="resetCodeBtn">获取验证码</button>
@@ -116,12 +118,15 @@
     <script>
         // 已适配你的域名 liwz.top
         const API_BASE = 'http://api.liwz.top:28850/';
+        const TURNSTILE_SITEKEY = '0x4AAAAAACyGeLsKIbpjbRer';
         let isPasswordLogin = true;
 
+        // 页面加载完成后初始化
         window.onload = () => {
             if (localStorage.getItem('token')) window.location.href = 'index.html';
         };
 
+        // 消息提示函数
         function showMessage(text, type = 'error') {
             const msgEl = document.getElementById('message');
             msgEl.textContent = text;
@@ -129,35 +134,60 @@
             setTimeout(() => msgEl.className = 'message', 3000);
         }
 
+        // 人机验证渲染函数（核心修复）
+        function renderTurnstile(containerId, action) {
+            // 确保Cloudflare脚本已加载
+            if (typeof turnstile === 'undefined') {
+                setTimeout(() => renderTurnstile(containerId, action), 100);
+                return;
+            }
+            // 先重置已有组件，避免重复渲染
+            turnstile.reset(`#${containerId}`);
+            // 手动渲染组件
+            turnstile.render(`#${containerId}`, {
+                sitekey: TURNSTILE_SITEKEY,
+                theme: 'light',
+                action: action
+            });
+        }
+
         // 标签切换逻辑
         document.querySelectorAll('.tab-item').forEach(item => {
             item.addEventListener('click', () => {
                 const tab = item.dataset.tab;
+                // 切换标签激活状态
                 document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
                 document.getElementById(tab).classList.add('active');
                 showMessage('', '');
-                // 切换标签时重置人机验证
-                turnstile.reset('#registerTurnstile');
-                turnstile.reset('#loginTurnstile');
-                turnstile.reset('#resetTurnstile');
+
+                // 切换到对应标签时，自动渲染人机验证组件（核心修复）
+                if (tab === 'register') {
+                    renderTurnstile('registerTurnstile', 'register_code');
+                } else if (tab === 'reset') {
+                    renderTurnstile('resetTurnstile', 'reset_code');
+                } else if (tab === 'login' && !isPasswordLogin) {
+                    renderTurnstile('loginTurnstile', 'login_code');
+                }
             });
         });
 
-        // 登录方式切换
+        // 登录方式切换（密码/验证码）
         document.getElementById('loginTypeSwitch').addEventListener('click', () => {
             isPasswordLogin = !isPasswordLogin;
             if (isPasswordLogin) {
+                // 切换到密码登录，隐藏验证码和人机验证
                 document.getElementById('passwordGroup').style.display = 'block';
                 document.getElementById('codeGroup').style.display = 'none';
                 document.getElementById('loginTypeSwitch').textContent = '使用验证码登录';
             } else {
+                // 切换到验证码登录，显示并渲染人机验证（核心修复）
                 document.getElementById('passwordGroup').style.display = 'none';
                 document.getElementById('codeGroup').style.display = 'block';
                 document.getElementById('loginTypeSwitch').textContent = '使用密码登录';
+                renderTurnstile('loginTurnstile', 'login_code');
             }
-            turnstile.reset('#loginTurnstile');
         });
 
         // 发送验证码核心逻辑（强制人机验证）
@@ -168,7 +198,11 @@
                 return;
             }
             // 2. 获取人机验证token，校验是否完成验证
-            const cfToken = turnstile.getResponse(turnstileId);
+            if (typeof turnstile === 'undefined') {
+                showMessage('人机验证组件加载中，请稍后重试');
+                return;
+            }
+            const cfToken = turnstile.getResponse(`#${turnstileId}`);
             if (!cfToken) {
                 showMessage('请先完成人机验证');
                 return;
@@ -197,7 +231,7 @@
                         action: 'send_code', 
                         email, 
                         type,
-                        cf_turnstile_token: cfToken // 人机验证token
+                        cf_turnstile_token: cfToken
                     })
                 });
                 const data = await res.json();
@@ -205,17 +239,17 @@
                     clearInterval(timer);
                     btnEl.disabled = false;
                     btnEl.textContent = '获取验证码';
-                    turnstile.reset(turnstileId); // 验证失败重置组件
+                    turnstile.reset(`#${turnstileId}`);
                     showMessage(data.msg);
                 } else {
                     showMessage('验证码发送成功，请注意查收', 'success');
-                    turnstile.reset(turnstileId); // 发送成功重置组件
+                    turnstile.reset(`#${turnstileId}`);
                 }
             } catch (e) {
                 clearInterval(timer);
                 btnEl.disabled = false;
                 btnEl.textContent = '获取验证码';
-                turnstile.reset(turnstileId);
+                turnstile.reset(`#${turnstileId}`);
                 showMessage('网络错误，请稍后重试');
             }
         }
@@ -223,17 +257,17 @@
         // 三个发送验证码按钮绑定事件
         document.getElementById('registerCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('registerEmail').value;
-            sendCode(email, 'register', document.getElementById('registerCodeBtn'), '#registerTurnstile');
+            sendCode(email, 'register', document.getElementById('registerCodeBtn'), 'registerTurnstile');
         });
 
         document.getElementById('loginCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
-            sendCode(email, 'login', document.getElementById('loginCodeBtn'), '#loginTurnstile');
+            sendCode(email, 'login', document.getElementById('loginCodeBtn'), 'loginTurnstile');
         });
 
         document.getElementById('resetCodeBtn').addEventListener('click', () => {
             const email = document.getElementById('resetEmail').value;
-            sendCode(email, 'reset', document.getElementById('resetCodeBtn'), '#resetTurnstile');
+            sendCode(email, 'reset', document.getElementById('resetCodeBtn'), 'resetTurnstile');
         });
 
         // 注册逻辑
