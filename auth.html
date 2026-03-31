@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI生图平台 - 登录注册</title>
-    <!-- 关键：解决HTTPS页面调用HTTP接口被浏览器拦截的问题 -->
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <!-- Cloudflare Turnstile 人机验证脚本 -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- 双重兼容：强制升级HTTP请求+允许混合内容，适配iPad端WebKit -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <!-- Cloudflare Turnstile 脚本加容错，避免iPad加载失败卡死 -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer onerror="window.turnstileLoadError=true"></script>
     <style>
         * {
             margin: 0;
@@ -154,7 +156,6 @@
             border: 1px solid #ffccc7;
             display: block;
         }
-        /* 人机验证容器样式 */
         .cf-turnstile {
             width: 100%;
             min-height: 65px;
@@ -174,7 +175,6 @@
         </div>
         <div class="tab-content">
             <div id="message" class="message"></div>
-            <!-- 登录面板 -->
             <div class="tab-pane active" id="login">
                 <div class="login-type-switch">
                     <span class="switch-link" id="loginTypeSwitch">使用验证码登录</span>
@@ -189,7 +189,6 @@
                 </div>
                 <div class="form-group" id="codeGroup" style="display: none;">
                     <label class="form-label">验证码</label>
-                    <!-- 验证码登录 人机验证容器 -->
                     <div class="cf-turnstile" id="loginTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="loginCode" placeholder="请输入验证码">
@@ -198,7 +197,6 @@
                 </div>
                 <button class="submit-btn" id="loginBtn">登录</button>
             </div>
-            <!-- 注册面板 -->
             <div class="tab-pane" id="register">
                 <div class="form-group">
                     <label class="form-label">邮箱</label>
@@ -210,7 +208,6 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <!-- 注册 人机验证容器 -->
                     <div class="cf-turnstile" id="registerTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="registerCode" placeholder="请输入验证码">
@@ -219,7 +216,6 @@
                 </div>
                 <button class="submit-btn" id="registerBtn">注册</button>
             </div>
-            <!-- 找回密码面板 -->
             <div class="tab-pane" id="reset">
                 <div class="form-group">
                     <label class="form-label">邮箱</label>
@@ -231,7 +227,6 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">验证码</label>
-                    <!-- 找回密码 人机验证容器 -->
                     <div class="cf-turnstile" id="resetTurnstile"></div>
                     <div class="input-row">
                         <input type="text" class="form-input" id="resetCode" placeholder="请输入验证码">
@@ -244,73 +239,105 @@
     </div>
 
     <script>
-        // 你原来的接口地址，完全不变
         const API_BASE = 'http://api.liwz.top:28850/';
         const TURNSTILE_SITEKEY = '0x4AAAAAACyGeLsKIbpjbRer';
         let isPasswordLogin = true;
+        let pageInitDone = false;
 
-        // 页面加载完成后初始化
-        window.onload = () => {
-            if (localStorage.getItem('token')) window.location.href = 'index.html';
+        // 页面加载完成后初始化，加超时容错，避免iPad卡死
+        window.onload = async () => {
+            const token = localStorage.getItem('token');
+            const email = localStorage.getItem('email');
+            // 加10秒超时，避免一直加载
+            const initTimeout = setTimeout(() => {
+                if (!pageInitDone) {
+                    localStorage.clear();
+                    pageInitDone = true;
+                }
+            }, 10000);
+
+            if (token && email) {
+                try {
+                    // 校验token有效性，加超时和容错
+                    const res = await Promise.race([
+                        fetch(API_BASE + 'auth.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'get_quota', token }),
+                            mode: 'cors',
+                            credentials: 'omit'
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 8000))
+                    ]);
+                    const data = await res.json();
+                    if (data.code === 0) {
+                        clearTimeout(initTimeout);
+                        pageInitDone = true;
+                        window.location.href = 'index.html';
+                    } else {
+                        localStorage.clear();
+                    }
+                } catch (e) {
+                    console.error('初始化请求失败', e);
+                    localStorage.clear();
+                }
+            }
+            clearTimeout(initTimeout);
+            pageInitDone = true;
         };
 
-        // 消息提示函数
         function showMessage(text, type = 'error') {
             const msgEl = document.getElementById('message');
             msgEl.textContent = text;
             msgEl.className = `message ${type}`;
-            setTimeout(() => msgEl.className = 'message', 3000);
+            setTimeout(() => msgEl.className = 'message', 3500);
         }
 
-        // 人机验证渲染函数（修复刷新消失的bug）
         function renderTurnstile(containerId, action) {
-            // 确保Cloudflare脚本已加载
+            if (window.turnstileLoadError) {
+                showMessage('人机验证组件加载失败，请检查网络');
+                return;
+            }
             if (typeof turnstile === 'undefined') {
                 setTimeout(() => renderTurnstile(containerId, action), 100);
                 return;
             }
-            // 先重置已有组件，避免重复渲染
-            turnstile.reset(`#${containerId}`);
-            // 手动渲染组件
-            turnstile.render(`#${containerId}`, {
-                sitekey: TURNSTILE_SITEKEY,
-                theme: 'light',
-                action: action
-            });
+            try {
+                turnstile.reset(`#${containerId}`);
+                turnstile.render(`#${containerId}`, {
+                    sitekey: TURNSTILE_SITEKEY,
+                    theme: 'light',
+                    action: action
+                });
+            } catch (e) {
+                console.error('人机验证渲染失败', e);
+            }
         }
 
         // 标签切换逻辑
         document.querySelectorAll('.tab-item').forEach(item => {
             item.addEventListener('click', () => {
                 const tab = item.dataset.tab;
-                // 切换标签激活状态
                 document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
                 document.getElementById(tab).classList.add('active');
                 showMessage('', '');
 
-                // 切换到对应标签时，自动渲染人机验证组件
-                if (tab === 'register') {
-                    renderTurnstile('registerTurnstile', 'register_code');
-                } else if (tab === 'reset') {
-                    renderTurnstile('resetTurnstile', 'reset_code');
-                } else if (tab === 'login' && !isPasswordLogin) {
-                    renderTurnstile('loginTurnstile', 'login_code');
-                }
+                if (tab === 'register') renderTurnstile('registerTurnstile', 'register_code');
+                if (tab === 'reset') renderTurnstile('resetTurnstile', 'reset_code');
+                if (tab === 'login' && !isPasswordLogin) renderTurnstile('loginTurnstile', 'login_code');
             });
         });
 
-        // 登录方式切换（密码/验证码）
+        // 登录方式切换
         document.getElementById('loginTypeSwitch').addEventListener('click', () => {
             isPasswordLogin = !isPasswordLogin;
             if (isPasswordLogin) {
-                // 切换到密码登录，隐藏验证码和人机验证
                 document.getElementById('passwordGroup').style.display = 'block';
                 document.getElementById('codeGroup').style.display = 'none';
                 document.getElementById('loginTypeSwitch').textContent = '使用验证码登录';
             } else {
-                // 切换到验证码登录，显示并渲染人机验证
                 document.getElementById('passwordGroup').style.display = 'none';
                 document.getElementById('codeGroup').style.display = 'block';
                 document.getElementById('loginTypeSwitch').textContent = '使用密码登录';
@@ -318,14 +345,12 @@
             }
         });
 
-        // 发送验证码核心逻辑（强制人机验证）
+        // 发送验证码核心逻辑，加超时容错
         async function sendCode(email, type, btnEl, turnstileId) {
-            // 1. 校验邮箱格式
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 showMessage('请输入正确的邮箱地址');
                 return;
             }
-            // 2. 获取人机验证token，校验是否完成验证
             if (typeof turnstile === 'undefined') {
                 showMessage('人机验证组件加载中，请稍后重试');
                 return;
@@ -336,7 +361,6 @@
                 return;
             }
 
-            // 3. 倒计时逻辑
             let countdown = 60;
             btnEl.disabled = true;
             btnEl.textContent = `${countdown}s后重发`;
@@ -351,17 +375,21 @@
             }, 1000);
 
             try {
-                // 4. 发送请求，携带人机验证token
-                const res = await fetch(API_BASE + 'auth.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        action: 'send_code', 
-                        email, 
-                        type,
-                        cf_turnstile_token: cfToken
-                    })
-                });
+                const res = await Promise.race([
+                    fetch(API_BASE + 'auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'send_code', 
+                            email, 
+                            type,
+                            cf_turnstile_token: cfToken
+                        }),
+                        mode: 'cors',
+                        credentials: 'omit'
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000))
+                ]);
                 const data = await res.json();
                 if (data.code !== 0) {
                     clearInterval(timer);
@@ -378,25 +406,20 @@
                 btnEl.disabled = false;
                 btnEl.textContent = '获取验证码';
                 turnstile.reset(`#${turnstileId}`);
-                showMessage('网络错误，请稍后重试');
+                showMessage('网络错误，请检查网络后重试');
                 console.error(e);
             }
         }
 
-        // 三个发送验证码按钮绑定事件
+        // 按钮绑定事件
         document.getElementById('registerCodeBtn').addEventListener('click', () => {
-            const email = document.getElementById('registerEmail').value;
-            sendCode(email, 'register', document.getElementById('registerCodeBtn'), 'registerTurnstile');
+            sendCode(document.getElementById('registerEmail').value, 'register', document.getElementById('registerCodeBtn'), 'registerTurnstile');
         });
-
         document.getElementById('loginCodeBtn').addEventListener('click', () => {
-            const email = document.getElementById('loginEmail').value;
-            sendCode(email, 'login', document.getElementById('loginCodeBtn'), 'loginTurnstile');
+            sendCode(document.getElementById('loginEmail').value, 'login', document.getElementById('loginCodeBtn'), 'loginTurnstile');
         });
-
         document.getElementById('resetCodeBtn').addEventListener('click', () => {
-            const email = document.getElementById('resetEmail').value;
-            sendCode(email, 'reset', document.getElementById('resetCodeBtn'), 'resetTurnstile');
+            sendCode(document.getElementById('resetEmail').value, 'reset', document.getElementById('resetCodeBtn'), 'resetTurnstile');
         });
 
         // 注册逻辑
@@ -421,13 +444,17 @@
 
             btn.disabled = true;
             btn.textContent = '注册中...';
-
             try {
-                const res = await fetch(API_BASE + 'auth.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'register', email, password, code })
-                });
+                const res = await Promise.race([
+                    fetch(API_BASE + 'auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'register', email, password, code }),
+                        mode: 'cors',
+                        credentials: 'omit'
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000))
+                ]);
                 const data = await res.json();
                 if (data.code !== 0) {
                     showMessage(data.msg);
@@ -479,11 +506,16 @@
             }
 
             try {
-                const res = await fetch(API_BASE + 'auth.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body
-                });
+                const res = await Promise.race([
+                    fetch(API_BASE + 'auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body,
+                        mode: 'cors',
+                        credentials: 'omit'
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000))
+                ]);
                 const data = await res.json();
                 if (data.code !== 0) {
                     showMessage(data.msg);
@@ -525,13 +557,17 @@
 
             btn.disabled = true;
             btn.textContent = '重置中...';
-
             try {
-                const res = await fetch(API_BASE + 'auth.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'reset_password', email, new_password: newPassword, code })
-                });
+                const res = await Promise.race([
+                    fetch(API_BASE + 'auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'reset_password', email, new_password: newPassword, code }),
+                        mode: 'cors',
+                        credentials: 'omit'
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000))
+                ]);
                 const data = await res.json();
                 if (data.code !== 0) {
                     showMessage(data.msg);
