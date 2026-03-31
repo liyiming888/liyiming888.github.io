@@ -2,514 +2,82 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI生图平台</title>
+    <!-- 同样加这句，解决跨浏览器拦截 -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-        }
-        body {
-            min-height: 100vh;
-            background: #f8f9fa;
-            padding: 16px;
-            padding-bottom: 40px;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-        }
-        .header {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .user-info {
-            flex: 1;
-            min-width: 200px;
-        }
-        .user-email {
-            font-size: 15px;
-            font-weight: 500;
-            color: #212529;
-            margin-bottom: 4px;
-            word-break: break-all;
-        }
-        .quota-info {
-            font-size: 14px;
-            color: #4361ee;
-            font-weight: 500;
-        }
-        .logout-btn {
-            padding: 10px 16px;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            background: #ffffff;
-            color: #6c757d;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            min-height: 44px;
-            flex-shrink: 0;
-        }
-        .logout-btn:active {
-            border-color: #fa5252;
-            color: #fa5252;
-            background: #fff5f5;
-        }
-        .form-card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            margin-bottom: 16px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #495057;
-            font-weight: 500;
-        }
-        .textarea-wrapper {
-            position: relative;
-        }
-        .form-textarea {
-            width: 100%;
-            min-height: 140px;
-            padding: 12px 16px;
-            padding-bottom: 40px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.5;
-            resize: none;
-            transition: border-color 0.2s;
-            -webkit-appearance: none;
-        }
-        .form-textarea:focus {
-            outline: none;
-            border-color: #4361ee;
-        }
-        .clear-btn {
-            position: absolute;
-            right: 12px;
-            bottom: 12px;
-            padding: 6px 10px;
-            border: none;
-            border-radius: 6px;
-            background: #f1f3f5;
-            color: #6c757d;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .clear-btn:active {
-            background: #e9ecef;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .form-select {
-            width: 100%;
-            height: 48px;
-            padding: 0 12px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 15px;
-            background: #ffffff;
-            transition: border-color 0.2s;
-            -webkit-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 16px;
-            padding-right: 36px;
-        }
-        .form-select:focus {
-            outline: none;
-            border-color: #4361ee;
-        }
-        .generate-btn {
-            width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 4px;
-        }
-        .generate-btn:active {
-            transform: scale(0.98);
-            opacity: 0.9;
-        }
-        .generate-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .message {
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 16px;
-            display: none;
-            word-break: break-all;
-        }
-        .message.success {
-            background: #f0fff4;
-            color: #2f9e44;
-            border: 1px solid #b2f2bb;
-            display: block;
-        }
-        .message.error {
-            background: #fff5f5;
-            color: #fa5252;
-            border: 1px solid #ffc9c9;
-            display: block;
-        }
-        .loading {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 40px 20px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            margin-bottom: 16px;
-            display: none;
-        }
-        .loading.show {
-            display: block;
-        }
-        .loading-spinner {
-            width: 44px;
-            height: 44px;
-            border: 4px solid #f1f3f5;
-            border-top: 4px solid #4361ee;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .loading-text {
-            font-size: 15px;
-            color: #495057;
-            line-height: 1.5;
-        }
-        .result-card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            display: none;
-        }
-        .result-card.show {
-            display: block;
-        }
-        .result-title {
-            font-size: 16px;
-            font-weight: 500;
-            color: #212529;
-            margin-bottom: 16px;
-        }
-        .image-wrapper {
-            width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 16px;
-            background: #f8f9fa;
-        }
-        .image-wrapper img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .action-btn {
-            width: 100%;
-            height: 48px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .download-btn {
-            background: #2f9e44;
-            color: #ffffff;
-        }
-        .download-btn:active {
-            background: #2b8a3e;
-        }
-        .copy-btn {
-            background: #4361ee;
-            color: #ffffff;
-        }
-        .copy-btn:active {
-            background: #3b5bdb;
-        }
-        .tips {
-            margin-top: 16px;
-            font-size: 13px;
-            color: #868e96;
-            text-align: center;
-            line-height: 1.4;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+        body{background:#f6f8fb;padding:20px;min-height:100vh}
+        .header{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:12px;padding:16px;margin-bottom:20px}
+        .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px}
+        textarea{width:100%;height:140px;border-radius:8px;border:1px solid #ddd;padding:12px;font-size:16px}
+        .row{display:flex;gap:12px;margin-bottom:16px}
+        .row>div{flex:1}
+        select{width:100%;height:48px;border-radius:8px;border:1px solid #ddd;padding:0 12px}
+        button{width:100%;height:50px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:16px}
+        .loading{text-align:center;padding:40px}
+        .result img{max-width:100%;border-radius:8px;margin:10px 0}
+        .btn-group{display:flex;gap:12px}
+        .message{padding:12px;border-radius:8px;margin-bottom:16px}
+        .error{background:#fee2e2;color:#b91c1c}
+        .success{background:#dcfce7;color:#166534}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="message" class="message"></div>
-        <div class="header">
-            <div class="user-info">
-                <div class="user-email" id="userEmail"></div>
-                <div class="quota-info">剩余免费额度：<span id="quotaNum">0</span> 张</div>
-            </div>
-            <button class="logout-btn" id="logoutBtn">退出登录</button>
+    <div class="header">
+        <div>
+            <div id="userEmail"></div>
+            <div>剩余额度：<span id="quotaNum"></span></div>
         </div>
-        <div class="form-card">
-            <div class="form-group">
-                <label class="form-label">图片提示词</label>
-                <div class="textarea-wrapper">
-                    <textarea 
-                        class="form-textarea" 
-                        id="prompt" 
-                        placeholder="请详细描述你想要的图片，例如：一只可爱的柯基犬在春天的草地上奔跑，阳光明媚，高清写实风格，8K画质"
-                    ></textarea>
-                    <button class="clear-btn" id="clearBtn">清空</button>
-                </div>
+        <button id="logoutBtn" style="width:auto;padding:0 16px">退出登录</button>
+    </div>
+
+    <div class="card">
+        <div class="message" id="message"></div>
+        <textarea id="prompt" placeholder="输入画面描述..."></textarea>
+        <div class="row">
+            <div>
+                <label>模型</label>
+                <select id="model">
+                    <option>gpt-image-1.5</option>
+                    <option>sora-image</option>
+                    <option>nano-banana-pro</option>
+                </select>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">生成模型</label>
-                    <select class="form-select" id="model">
-                        <option value="gpt-image-1.5">GPT Image 1.5</option>
-                        <option value="sora-image">Sora Image</option>
-                        <option value="nano-banana-pro">Nano Banana Pro</option>
-                        <option value="nano-banana-2">Nano Banana 2</option>
-                        <option value="nano-banana-fast">Nano Banana Fast</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">图片比例</label>
-                    <select class="form-select" id="ratio">
-                        <option value="1:1">1:1 方形</option>
-                        <option value="9:16">9:16 竖屏</option>
-                        <option value="16:9">16:9 横屏</option>
-                        <option value="3:4">3:4 竖版</option>
-                        <option value="4:3">4:3 标准</option>
-                    </select>
-                </div>
-            </div>
-            <button class="generate-btn" id="generateBtn">立即生成图片</button>
-        </div>
-        <div class="loading" id="loading">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">正在生成图片，请稍候...<br>请勿关闭或切走页面</div>
-        </div>
-        <div class="result-card" id="resultCard">
-            <div class="result-title">生成结果</div>
-            <div class="image-wrapper">
-                <img id="resultImage" alt="AI生成的图片" crossorigin="anonymous">
-            </div>
-            <div class="btn-group">
-                <button class="action-btn download-btn" id="downloadBtn">保存图片</button>
-                <button class="action-btn copy-btn" id="copyBtn">复制链接</button>
+            <div>
+                <label>比例</label>
+                <select id="ratio">
+                    <option>1:1</option><option>9:16</option><option>16:9</option>
+                </select>
             </div>
         </div>
-        <div class="tips">
-            提示：提示词越详细，生成效果越好<br>免费额度用完后将无法继续生成
+        <button id="generateBtn">立即生成</button>
+    </div>
+
+    <div class="loading" id="loading" style="display:none">生成中，请稍候...</div>
+    <div class="card result" id="result" style="display:none">
+        <img id="img">
+        <div class="btn-group">
+            <button id="download">保存图片</button>
+            <button id="copy">复制链接</button>
         </div>
     </div>
 
     <script>
-        // 已适配你的域名 liwz.top
         const API_BASE = 'http://api.liwz.top:28850/';
-        let currentImageUrl = '';
-
         window.onload = () => {
-            const token = localStorage.getItem('token');
-            const email = localStorage.getItem('email');
-            if (!token || !email) {
-                window.location.href = 'auth.html';
-                return;
-            }
-            document.getElementById('userEmail').textContent = email;
-            refreshQuota();
+            const t = localStorage.getItem('token');
+            const e = localStorage.getItem('email');
+            if(!t||!e)location.href='auth.html';
+            document.getElementById('userEmail').textContent = e;
         };
-
-        function showMessage(text, type = 'error') {
-            const msgEl = document.getElementById('message');
-            msgEl.textContent = text;
-            msgEl.className = `message ${type}`;
-            setTimeout(() => {
-                msgEl.className = 'message';
-            }, 3500);
+        function msg(t,e='error'){
+            const m=document.getElementById('message');
+            m.textContent=t;m.className='message '+e;
+            setTimeout(()=>m.className='message',3000);
         }
-
-        async function refreshQuota() {
-            const token = localStorage.getItem('token');
-            try {
-                const res = await fetch(API_BASE + 'auth.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_quota', token })
-                });
-                const data = await res.json();
-                if (data.code !== 0) {
-                    showMessage(data.msg);
-                    setTimeout(() => {
-                        localStorage.clear();
-                        window.location.href = 'auth.html';
-                    }, 1500);
-                } else {
-                    const quota = data.data.quota;
-                    document.getElementById('quotaNum').textContent = quota;
-                    localStorage.setItem('quota', quota);
-                }
-            } catch (e) {
-                showMessage('网络异常，无法获取额度');
-                document.getElementById('quotaNum').textContent = localStorage.getItem('quota') || 0;
-            }
-        }
-
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            document.getElementById('prompt').value = '';
-            document.getElementById('prompt').focus();
-        });
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.clear();
-            window.location.href = 'auth.html';
-        });
-
-        document.getElementById('generateBtn').addEventListener('click', async () => {
-            const token = localStorage.getItem('token');
-            const prompt = document.getElementById('prompt').value.trim();
-            const model = document.getElementById('model').value;
-            const ratio = document.getElementById('ratio').value;
-            const generateBtn = document.getElementById('generateBtn');
-            const loadingEl = document.getElementById('loading');
-            const resultCard = document.getElementById('resultCard');
-
-            if (!prompt) {
-                showMessage('请输入图片提示词');
-                return;
-            }
-            if (parseInt(localStorage.getItem('quota') || 0) <= 0) {
-                showMessage('你的免费额度已用完');
-                return;
-            }
-
-            resultCard.classList.remove('show');
-            loadingEl.classList.add('show');
-            generateBtn.disabled = true;
-            generateBtn.textContent = '生成中...';
-            currentImageUrl = '';
-
-            try {
-                const res = await fetch(API_BASE + 'generate.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, prompt, model, ratio })
-                });
-                const data = await res.json();
-
-                if (data.code !== 0) {
-                    showMessage(data.msg);
-                } else {
-                    currentImageUrl = data.data.image_url;
-                    document.getElementById('resultImage').src = currentImageUrl;
-                    resultCard.classList.add('show');
-                    document.getElementById('quotaNum').textContent = data.data.remaining_quota;
-                    localStorage.setItem('quota', data.data.remaining_quota);
-                    showMessage('图片生成成功！', 'success');
-                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            } catch (e) {
-                showMessage('网络异常，生成失败，请稍后重试');
-                console.error(e);
-            } finally {
-                loadingEl.classList.remove('show');
-                generateBtn.disabled = false;
-                generateBtn.textContent = '立即生成图片';
-            }
-        });
-
-        document.getElementById('downloadBtn').addEventListener('click', async () => {
-            if (!currentImageUrl) {
-                showMessage('没有可保存的图片');
-                return;
-            }
-            const downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.disabled = true;
-            downloadBtn.textContent = '保存中...';
-
-            try {
-                const res = await fetch(currentImageUrl);
-                const blob = await res.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = `AI生图_${new Date().getTime()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(blobUrl);
-                showMessage('图片保存成功！', 'success');
-            } catch (e) {
-                window.open(currentImageUrl, '_blank');
-                showMessage('已打开图片，长按即可保存', 'success');
-            } finally {
-                downloadBtn.disabled = false;
-                downloadBtn.textContent = '保存图片';
-            }
-        });
-
-        document.getElementById('copyBtn').addEventListener('click', () => {
-            if (!currentImageUrl) {
-                showMessage('没有可复制的链接');
-                return;
-            }
-            navigator.clipboard.writeText(currentImageUrl).then(() => {
-                showMessage('图片链接已复制到剪贴板', 'success');
-            }).catch(() => {
-                const input = document.createElement('input');
-                input.value = currentImageUrl;
-                document.body.appendChild(input);
-                input.select();
-                document.execCommand('copy');
-                document.body.removeChild(input);
-                showMessage('图片链接已复制到剪贴板', 'success');
-            });
-        });
+        document.getElementById('logoutBtn').onclick=()=>{localStorage.clear();location.href='auth.html'};
     </script>
 </body>
 </html>
