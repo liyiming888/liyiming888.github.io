@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI生图平台 - 生成图片</title>
+  <title>AI生图平台 - 图片生成</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body { min-height: 100vh; background: #f5f7fa; padding: 20px; }
-    .header { max-width: 800px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; background: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .header { max-width: 800px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; background: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 10px; }
     .user-info { display: flex; flex-direction: column; gap: 4px; }
     .email { font-weight: 600; color: #333; }
     .remaining { font-size: 14px; color: #667eea; font-weight: 500; }
-    .logout-btn { padding: 8px 16px; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .logout-btn { padding: 8px 16px; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s; }
+    .logout-btn:hover { background: #fee2e2; }
     .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; }
     .form-section { padding: 24px; border-bottom: 1px solid #eee; }
     .form-group { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; }
     textarea, select { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; transition: border 0.3s; }
     textarea:focus, select:focus { outline: none; border-color: #667eea; }
-    textarea { min-height: 120px; resize: vertical; }
+    textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .generate-btn { width: 100%; padding: 16px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer; transition: background 0.3s; }
     .generate-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -28,13 +29,15 @@
     .image-container { width: 100%; border-radius: 12px; overflow: hidden; background: #f5f7fa; display: flex; align-items: center; justify-content: center; min-height: 300px; }
     .image-container img { width: 100%; height: auto; display: block; }
     .empty-tip { color: #999; font-size: 14px; }
-    .download-btn { margin-top: 16px; padding: 12px; width: 100%; background: #0d9488; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: none; }
-    .loading { display: none; color: #667eea; font-weight: 500; }
+    .download-btn { margin-top: 16px; padding: 12px; width: 100%; background: #0d9488; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: none; transition: background 0.3s; }
+    .download-btn:hover { background: #0f766e; }
+    .loading { display: none; color: #667eea; font-weight: 500; text-align: center; margin-top: 16px; }
     .message { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; }
     .message.success { background: #f0f9ff; color: #0d9488; border: 1px solid #99f6e4; }
     .message.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
     @media (max-width: 600px) {
       .row { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
@@ -51,11 +54,11 @@
     <div class="form-section">
       <div class="form-group">
         <label>图片提示词</label>
-        <textarea id="prompt" placeholder="请输入图片描述，越详细生成效果越好，例如：一只可爱的柯基在草地上奔跑，阳光明媚，高清写实风格"></textarea>
+        <textarea id="prompt" placeholder="请输入详细的图片描述，越详细生成效果越好，例如：一只可爱的柯基在阳光下的草地上奔跑，高清写实风格，8K分辨率"></textarea>
       </div>
       <div class="row">
         <div class="form-group">
-          <label>选择模型</label>
+          <label>选择生成模型</label>
           <select id="model-select"></select>
         </div>
         <div class="form-group">
@@ -72,21 +75,23 @@
       <div class="result-title">生成结果</div>
       <div class="image-container">
         <span class="empty-tip" id="empty-tip">生成的图片将在这里显示</span>
-        <img id="result-image" style="display: none;">
+        <img id="result-image" style="display: none;" alt="AI生成图片">
       </div>
       <button class="download-btn" id="download-btn" onclick="downloadImage()">下载图片</button>
     </div>
   </div>
 
   <script>
-    // 后端地址（替换成你的服务器公网IP）
-    const AUTH_BASE_URL = 'http://你的服务器公网IP:3000';
-    const IMAGE_BASE_URL = 'http://你的服务器公网IP:3001';
+    // 后端地址（你的域名，无需修改）
+    const AUTH_BASE_URL = 'https://liwz.top/api/auth';
+    const IMAGE_BASE_URL = 'https://liwz.top/api/image';
 
+    // 全局变量
     const token = localStorage.getItem('token');
     let currentImageUrl = '';
+    let userInfo = {};
 
-    // 未登录跳转
+    // 未登录自动跳转
     if (!token) {
       window.location.href = 'index.html';
     }
@@ -106,8 +111,9 @@
         });
         const data = await res.json();
         if (data.success) {
-          document.getElementById('user-email').innerText = data.data.email;
-          document.getElementById('remaining-times').innerText = data.data.remaining_times;
+          userInfo = data.data;
+          document.getElementById('user-email').innerText = userInfo.email;
+          document.getElementById('remaining-times').innerText = userInfo.remaining_times;
         } else {
           logout();
         }
@@ -161,7 +167,8 @@
       const aspectRatio = document.getElementById('ratio-select').value;
 
       if (!prompt) return showMessage('请输入图片提示词', 'error');
-      if (!model || !aspectRatio) return showMessage('请选择模型和比例', 'error');
+      if (!model || !aspectRatio) return showMessage('请选择模型和图片比例', 'error');
+      if (userInfo.remaining_times <= 0) return showMessage('剩余生成次数不足', 'error');
 
       // 按钮禁用，显示加载
       const btn = document.getElementById('generate-btn');
@@ -182,7 +189,8 @@
         const data = await res.json();
         if (data.success) {
           // 更新剩余次数
-          document.getElementById('remaining-times').innerText = data.data.remaining;
+          userInfo.remaining_times = data.data.remaining;
+          document.getElementById('remaining-times').innerText = userInfo.remaining_times;
           // 显示图片
           currentImageUrl = data.data.imageUrl;
           document.getElementById('empty-tip').style.display = 'none';
@@ -207,7 +215,7 @@
       if (!currentImageUrl) return;
       const a = document.createElement('a');
       a.href = currentImageUrl;
-      a.download = `ai-generated-${Date.now()}.png`;
+      a.download = `ai-generated-image-${Date.now()}.png`;
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
@@ -217,7 +225,7 @@
     // 退出登录
     function logout() {
       localStorage.removeItem('token');
-      localStorage.removeItem('email');
+      localStorage.removeItem('user');
       window.location.href = 'index.html';
     }
 
@@ -226,7 +234,7 @@
       const el = document.getElementById('message');
       el.className = `message ${status}`;
       el.innerText = text;
-      setTimeout(() => { el.innerText = ''; el.className = ''; }, 3000);
+      setTimeout(() => { el.innerText = ''; el.className = ''; }, 4000);
     }
   </script>
 </body>
