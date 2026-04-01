@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI生图平台 - 登录</title>
+  <title>AI生图平台 - 登录注册</title>
+  <!-- Cloudflare Turnstile 人机验证脚本 -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body { min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .container { width: 100%; max-width: 400px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+    .container { width: 100%; max-width: 420px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
     .tabs { display: flex; border-bottom: 1px solid #eee; }
-    .tab { flex: 1; padding: 16px; text-align: center; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; }
+    .tab { flex: 1; padding: 16px 8px; text-align: center; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; font-size: 14px; }
     .tab.active { color: #667eea; border-bottom: 3px solid #667eea; }
     .tab-content { display: none; padding: 30px 24px; }
     .tab-content.active { display: block; }
@@ -17,10 +19,11 @@
     label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; font-size: 14px; }
     input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; transition: border 0.3s; }
     input:focus { outline: none; border-color: #667eea; }
-    .code-row { display: flex; gap: 10px; }
+    .code-row { display: flex; gap: 10px; margin-bottom: 15px; }
     .code-row input { flex: 1; }
-    .code-btn { width: 120px; padding: 12px 0; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: background 0.3s; }
+    .code-btn { width: 120px; padding: 12px 0; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: background 0.3s; flex-shrink: 0; }
     .code-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .turnstile-box { margin-bottom: 20px; display: flex; justify-content: center; }
     .submit-btn { width: 100%; padding: 14px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s; margin-top: 10px; }
     .submit-btn:hover { background: #5568d3; }
     .message { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; }
@@ -57,11 +60,13 @@
         <label>邮箱</label>
         <input type="email" id="code-email" placeholder="请输入邮箱">
       </div>
-      <div class="form-group">
-        <div class="code-row">
-          <input type="text" id="code-code" placeholder="请输入验证码">
-          <button class="code-btn" id="code-send-btn" onclick="sendCode('login')">获取验证码</button>
-        </div>
+      <div class="code-row">
+        <input type="text" id="code-code" placeholder="请输入验证码">
+        <button class="code-btn" id="code-send-btn" onclick="sendCode('login')">获取验证码</button>
+      </div>
+      <!-- 人机验证 -->
+      <div class="turnstile-box">
+        <div class="cf-turnstile" id="code-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
       </div>
       <button class="submit-btn" onclick="codeLogin()">登录</button>
       <div id="code-message"></div>
@@ -77,11 +82,13 @@
         <label>密码</label>
         <input type="password" id="register-password" placeholder="请设置6位以上密码">
       </div>
-      <div class="form-group">
-        <div class="code-row">
-          <input type="text" id="register-code" placeholder="请输入验证码">
-          <button class="code-btn" id="register-send-btn" onclick="sendCode('register')">获取验证码</button>
-        </div>
+      <div class="code-row">
+        <input type="text" id="register-code" placeholder="请输入验证码">
+        <button class="code-btn" id="register-send-btn" onclick="sendCode('register')">获取验证码</button>
+      </div>
+      <!-- 人机验证 -->
+      <div class="turnstile-box">
+        <div class="cf-turnstile" id="register-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
       </div>
       <button class="submit-btn" onclick="register()">注册</button>
       <div id="register-message"></div>
@@ -97,11 +104,13 @@
         <label>新密码</label>
         <input type="password" id="reset-password" placeholder="请设置新密码">
       </div>
-      <div class="form-group">
-        <div class="code-row">
-          <input type="text" id="reset-code" placeholder="请输入验证码">
-          <button class="code-btn" id="reset-send-btn" onclick="sendCode('reset')">获取验证码</button>
-        </div>
+      <div class="code-row">
+        <input type="text" id="reset-code" placeholder="请输入验证码">
+        <button class="code-btn" id="reset-send-btn" onclick="sendCode('reset')">获取验证码</button>
+      </div>
+      <!-- 人机验证 -->
+      <div class="turnstile-box">
+        <div class="cf-turnstile" id="reset-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
       </div>
       <button class="submit-btn" onclick="resetPassword()">重置密码</button>
       <div id="reset-message"></div>
@@ -109,16 +118,39 @@
   </div>
 
   <script>
-    // 后端地址（替换成你的服务器公网IP）
-    const AUTH_BASE_URL = 'http://你的服务器公网IP:3000';
+    // 后端地址（你的域名，无需修改）
+    const AUTH_BASE_URL = 'https://liwz.top/api/auth';
+    // 全局变量
+    let currentTab = 'login';
+    let turnstileTokens = {};
+
+    // 页面加载完成后初始化
+    window.onload = () => {
+      // 已登录自动跳转到生图页
+      if (localStorage.getItem('token')) {
+        window.location.href = 'dashboard.html';
+      }
+      // 监听人机验证完成事件
+      window.turnstileRender = function(token, widgetId) {
+        turnstileTokens[widgetId] = token;
+      };
+    };
 
     // tab切换
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
+        // 切换激活状态
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
-        document.getElementById(tab.dataset.tab).classList.add('active');
+        const tabId = tab.dataset.tab;
+        document.getElementById(tabId).classList.add('active');
+        currentTab = tabId;
+        // 重置人机验证
+        turnstileTokens = {};
+        if (window.turnstile) {
+          window.turnstile.reset();
+        }
       });
     });
 
@@ -130,8 +162,13 @@
         reset: 'reset-email'
       };
       const email = document.getElementById(emailMap[type]).value;
-      if (!email) return showMessage(type, '请输入邮箱', 'error');
+      if (!email) return showMessage(type, '请先输入邮箱', 'error');
 
+      // 获取人机验证token
+      const token = turnstileTokens[`${type}-turnstile`];
+      if (!token) return showMessage(type, '请先完成人机验证', 'error');
+
+      // 按钮倒计时
       const btn = document.getElementById(`${type}-send-btn`);
       btn.disabled = true;
       let countdown = 60;
@@ -149,19 +186,23 @@
         const res = await fetch(`${AUTH_BASE_URL}/api/send-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, type })
+          body: JSON.stringify({ email, type, turnstileToken: token })
         });
         const data = await res.json();
         if (data.success) {
-          showMessage(type, '验证码发送成功', 'success');
+          showMessage(type, '验证码发送成功，请注意查收', 'success');
         } else {
           showMessage(type, data.message, 'error');
+          // 重置按钮
           clearInterval(timer);
           btn.innerText = '获取验证码';
           btn.disabled = false;
+          // 重置人机验证
+          if (window.turnstile) window.turnstile.reset();
+          turnstileTokens = {};
         }
       } catch (err) {
-        showMessage(type, '网络错误，请检查后端地址是否正确', 'error');
+        showMessage(type, '网络错误，请检查后端地址', 'error');
         clearInterval(timer);
         btn.innerText = '获取验证码';
         btn.disabled = false;
@@ -184,7 +225,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          showMessage('register', '注册成功，即将跳转到登录', 'success');
+          showMessage('register', '注册成功，即将跳转到登录页', 'success');
           setTimeout(() => {
             document.querySelector('[data-tab="login"]').click();
           }, 1500);
@@ -211,7 +252,7 @@
         const data = await res.json();
         if (data.success) {
           localStorage.setItem('token', data.token);
-          localStorage.setItem('email', data.email);
+          localStorage.setItem('user', JSON.stringify(data.user));
           window.location.href = 'dashboard.html';
         } else {
           showMessage('login', data.message, 'error');
@@ -236,7 +277,7 @@
         const data = await res.json();
         if (data.success) {
           localStorage.setItem('token', data.token);
-          localStorage.setItem('email', data.email);
+          localStorage.setItem('user', JSON.stringify(data.user));
           window.location.href = 'dashboard.html';
         } else {
           showMessage('code', data.message, 'error');
@@ -262,7 +303,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          showMessage('reset', '密码重置成功，即将跳转到登录', 'success');
+          showMessage('reset', '密码重置成功，即将跳转到登录页', 'success');
           setTimeout(() => {
             document.querySelector('[data-tab="login"]').click();
           }, 1500);
@@ -279,7 +320,7 @@
       const el = document.getElementById(`${type}-message`);
       el.className = `message ${status}`;
       el.innerText = text;
-      setTimeout(() => { el.innerText = ''; el.className = ''; }, 3000);
+      setTimeout(() => { el.innerText = ''; el.className = ''; }, 4000);
     }
   </script>
 </body>
