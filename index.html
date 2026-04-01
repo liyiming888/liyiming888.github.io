@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
-    <title>AI生图平台</title>
+    <title>AI生图平台 - 图片生成</title>
     <style>
         * {
             margin: 0;
@@ -351,7 +351,6 @@
 <body>
     <div class="container">
         <div id="message" class="message"></div>
-
         <div class="header">
             <div class="user-info">
                 <div class="user-email" id="userEmail"></div>
@@ -359,7 +358,6 @@
             </div>
             <button class="logout-btn" id="logoutBtn">退出登录</button>
         </div>
-
         <div class="form-card">
             <div class="form-group">
                 <label class="form-label">图片描述提示词</label>
@@ -392,12 +390,10 @@
             </div>
             <button class="generate-btn" id="generateBtn">立即生成图片</button>
         </div>
-
         <div class="loading" id="loading">
             <div class="loading-spinner"></div>
             <div class="loading-text">正在生成图片，请稍候...<br>请勿关闭或切走页面，生成时间约10-30秒</div>
         </div>
-
         <div class="result-card" id="resultCard">
             <div class="result-title">✅ 图片生成成功</div>
             <div class="image-wrapper">
@@ -408,13 +404,13 @@
                 <button class="action-btn copy-btn" id="copyBtn">复制图片链接</button>
             </div>
         </div>
-
         <div class="tips">
             提示：提示词描述越详细，生成的图片效果越好<br>免费额度用完后将无法继续生成图片
         </div>
     </div>
 
     <script>
+        // 【核心修正】最终HTTPS接口地址，无端口、无HTTP，彻底解决混合内容拦截
         const API_BASE = 'https://api.liwz.top/';
         let currentImageUrl = '';
 
@@ -444,12 +440,12 @@
                 const res = await Promise.race([
                     fetch(API_BASE + 'auth.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify({ action: 'get_quota', token }),
                         mode: 'cors',
                         credentials: 'omit'
                     }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000))
                 ]);
                 const data = await res.json();
                 if (data.code !== 0) {
@@ -464,7 +460,7 @@
                     localStorage.setItem('quota', q);
                 }
             } catch (e) {
-                showMessage('网络异常，无法获取额度');
+                showMessage('网络异常，无法获取剩余额度');
                 document.getElementById('quotaNum').textContent = localStorage.getItem('quota') || 0;
             }
         }
@@ -507,12 +503,12 @@
                 const res = await Promise.race([
                     fetch(API_BASE + 'generate.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token, prompt, model, ratio }),
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ token: token, prompt: prompt, model: model, ratio: ratio }),
                         mode: 'cors',
                         credentials: 'omit'
                     }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 60000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 60000))
                 ]);
                 const data = await res.json();
                 if (data.code !== 0) {
