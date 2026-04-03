@@ -1,327 +1,180 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI生图平台 - 登录注册</title>
-  <!-- Cloudflare Turnstile 人机验证脚本 -->
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .container { width: 100%; max-width: 420px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-    .tabs { display: flex; border-bottom: 1px solid #eee; }
-    .tab { flex: 1; padding: 16px 8px; text-align: center; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; font-size: 14px; }
-    .tab.active { color: #667eea; border-bottom: 3px solid #667eea; }
-    .tab-content { display: none; padding: 30px 24px; }
-    .tab-content.active { display: block; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; font-size: 14px; }
-    input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; transition: border 0.3s; }
-    input:focus { outline: none; border-color: #667eea; }
-    .code-row { display: flex; gap: 10px; margin-bottom: 15px; }
-    .code-row input { flex: 1; }
-    .code-btn { width: 120px; padding: 12px 0; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: background 0.3s; flex-shrink: 0; }
-    .code-btn:disabled { background: #ccc; cursor: not-allowed; }
-    .turnstile-box { margin-bottom: 20px; display: flex; justify-content: center; }
-    .submit-btn { width: 100%; padding: 14px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s; margin-top: 10px; }
-    .submit-btn:hover { background: #5568d3; }
-    .message { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; }
-    .message.success { background: #f0f9ff; color: #0d9488; border: 1px solid #99f6e4; }
-    .message.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI生图平台 - 生成图片</title>
+    <style>
+        * {margin: 0;padding: 0;box-sizing: border-box;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;}
+        body {min-height: 100vh;background: #f5f7fa;padding: 20px;}
+        .header {max-width: 800px;margin: 0 auto 20px;display: flex;justify-content: space-between;align-items: center;background: #fff;padding: 16px 20px;border-radius: 12px;box-shadow: 0 2px 10px rgba(0,0,0,0.05);flex-wrap: wrap;gap: 10px;}
+        .header h1 {font-size: 20px;color: #333;}
+        .quota {background: #667eea;color: #fff;padding: 6px 12px;border-radius: 20px;font-size: 14px;font-weight: 500;}
+        .logout-btn {background: #ef4444;color: #fff;border: none;padding: 8px 16px;border-radius: 8px;cursor: pointer;font-weight: 500;}
+        .container {max-width: 800px;margin: 0 auto;background: #fff;border-radius: 16px;box-shadow: 0 2px 10px rgba(0,0,0,0.05);overflow: hidden;}
+        .form-section {padding: 24px;border-bottom: 1px solid #eee;}
+        .form-item {margin-bottom: 20px;}
+        label {display: block;margin-bottom: 8px;color: #333;font-weight: 500;}
+        textarea {width: 100%;padding: 12px 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;min-height: 100px;resize: vertical;transition: border 0.3s;}
+        textarea:focus {outline: none;border-color: #667eea;}
+        .row {display: flex;gap: 15px;flex-wrap: wrap;}
+        .row .form-item {flex: 1;min-width: 200px;margin-bottom: 0;}
+        select {width: 100%;padding: 12px 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;background: #fff;transition: border 0.3s;}
+        select:focus {outline: none;border-color: #667eea;}
+        .generate-btn {width: 100%;padding: 16px;background: #667eea;color: #fff;border: none;border-radius: 8px;font-size: 18px;font-weight: 600;cursor: pointer;transition: background 0.3s;margin-top: 10px;}
+        .generate-btn:hover {background: #5568d3;}
+        .generate-btn:disabled {background: #ccc;cursor: not-allowed;}
+        .result-section {padding: 24px;}
+        .result-section h2 {font-size: 18px;color: #333;margin-bottom: 16px;}
+        .image-container {width: 100%;border-radius: 12px;overflow: hidden;background: #f0f0f0;margin-bottom: 16px;}
+        .image-container img {width: 100%;display: block;}
+        .download-btn {width: 100%;padding: 12px;background: #10b981;color: #fff;border: none;border-radius: 8px;font-size: 16px;font-weight: 600;cursor: pointer;text-decoration: none;display: inline-block;text-align: center;}
+        .loading {text-align: center;padding: 40px 0;color: #666;}
+        .loading .spinner {width: 40px;height: 40px;border: 4px solid #eee;border-top: 4px solid #667eea;border-radius: 50%;animation: spin 1s linear infinite;margin: 0 auto 16px;}
+        @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
+        .message {padding: 12px;border-radius: 8px;margin-bottom: 20px;font-size: 14px;}
+        .message.success {background: #f0f9ff;color: #0d9488;border: 1px solid #99f6e4;}
+        .message.error {background: #fef2f2;color: #dc2626;border: 1px solid #fecaca;}
+        @media (max-width: 600px) {
+            .row {flex-direction: column;gap: 20px;}
+            .row .form-item {min-width: 100%;}
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="tabs">
-      <div class="tab active" data-tab="login">密码登录</div>
-      <div class="tab" data-tab="code">验证码登录</div>
-      <div class="tab" data-tab="register">注册</div>
-      <div class="tab" data-tab="reset">找回密码</div>
+    <div class="header">
+        <h1>AI生图平台</h1>
+        <div class="quota" id="quota-text">剩余免费额度：0次</div>
+        <button class="logout-btn" id="logout-btn">退出登录</button>
     </div>
 
-    <!-- 密码登录 -->
-    <div class="tab-content active" id="login">
-      <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="login-email" placeholder="请输入注册邮箱">
-      </div>
-      <div class="form-group">
-        <label>密码</label>
-        <input type="password" id="login-password" placeholder="请输入密码">
-      </div>
-      <button class="submit-btn" onclick="passwordLogin()">登录</button>
-      <div id="login-message"></div>
+    <div class="container">
+        <div class="form-section">
+            <div id="message-box"></div>
+            <div class="form-item">
+                <label>图片描述（Prompt）</label>
+                <textarea id="prompt" placeholder="请输入详细的图片描述，例如：一只可爱的猫咪，坐在草地上，阳光明媚，高清，8K"></textarea>
+            </div>
+            <div class="row">
+                <div class="form-item">
+                    <label>选择模型</label>
+                    <select id="model">
+                        <option value="sora-image">sora-image</option>
+                        <option value="nano-banana-pro">nano-banana-pro</option>
+                        <option value="gpt-image-1.5">gpt-image-1.5</option>
+                        <option value="nano-banana-fast">nano-banana-fast</option>
+                        <option value="nano-banana-2">nano-banana-2</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label>图片比例</label>
+                    <select id="ratio">
+                        <option value="1:1">1:1 (正方形)</option>
+                        <option value="16:9">16:9 (横屏)</option>
+                        <option value="9:16">9:16 (竖屏)</option>
+                        <option value="4:3">4:3 (横屏)</option>
+                        <option value="3:4">3:4 (竖屏)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="generate-btn" id="generate-btn">生成图片</button>
+        </div>
+
+        <div class="result-section">
+            <h2>生成结果</h2>
+            <div id="result-content">
+                <p style="color: #666;">请输入描述并点击生成按钮</p>
+            </div>
+        </div>
     </div>
 
-    <!-- 验证码登录 -->
-    <div class="tab-content" id="code">
-      <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="code-email" placeholder="请输入邮箱">
-      </div>
-      <div class="code-row">
-        <input type="text" id="code-code" placeholder="请输入验证码">
-        <button class="code-btn" id="code-send-btn" onclick="sendCode('login')">获取验证码</button>
-      </div>
-      <!-- 人机验证 -->
-      <div class="turnstile-box">
-        <div class="cf-turnstile" id="code-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
-      </div>
-      <button class="submit-btn" onclick="codeLogin()">登录</button>
-      <div id="code-message"></div>
-    </div>
+    <script>
+        const API_BASE = 'https://api.liwz.top';
+        const token = localStorage.getItem('ai_image_token');
+        const user = JSON.parse(localStorage.getItem('ai_image_user') || '{}');
 
-    <!-- 注册 -->
-    <div class="tab-content" id="register">
-      <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="register-email" placeholder="请输入邮箱">
-      </div>
-      <div class="form-group">
-        <label>密码</label>
-        <input type="password" id="register-password" placeholder="请设置6位以上密码">
-      </div>
-      <div class="code-row">
-        <input type="text" id="register-code" placeholder="请输入验证码">
-        <button class="code-btn" id="register-send-btn" onclick="sendCode('register')">获取验证码</button>
-      </div>
-      <!-- 人机验证 -->
-      <div class="turnstile-box">
-        <div class="cf-turnstile" id="register-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
-      </div>
-      <button class="submit-btn" onclick="register()">注册</button>
-      <div id="register-message"></div>
-    </div>
-
-    <!-- 找回密码 -->
-    <div class="tab-content" id="reset">
-      <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="reset-email" placeholder="请输入注册邮箱">
-      </div>
-      <div class="form-group">
-        <label>新密码</label>
-        <input type="password" id="reset-password" placeholder="请设置新密码">
-      </div>
-      <div class="code-row">
-        <input type="text" id="reset-code" placeholder="请输入验证码">
-        <button class="code-btn" id="reset-send-btn" onclick="sendCode('reset')">获取验证码</button>
-      </div>
-      <!-- 人机验证 -->
-      <div class="turnstile-box">
-        <div class="cf-turnstile" id="reset-turnstile" data-sitekey="0x4AAAAAACyGeLsKIbpjbRer" data-theme="light" data-size="normal"></div>
-      </div>
-      <button class="submit-btn" onclick="resetPassword()">重置密码</button>
-      <div id="reset-message"></div>
-    </div>
-  </div>
-
-  <script>
-    // 后端地址（你的域名，无需修改）
-    const AUTH_BASE_URL = 'https://liwz.top/api/auth';
-    // 全局变量
-    let currentTab = 'login';
-    let turnstileTokens = {};
-
-    // 页面加载完成后初始化
-    window.onload = () => {
-      // 已登录自动跳转到生图页
-      if (localStorage.getItem('token')) {
-        window.location.href = 'dashboard.html';
-      }
-      // 监听人机验证完成事件
-      window.turnstileRender = function(token, widgetId) {
-        turnstileTokens[widgetId] = token;
-      };
-    };
-
-    // tab切换
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        // 切换激活状态
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        const tabId = tab.dataset.tab;
-        document.getElementById(tabId).classList.add('active');
-        currentTab = tabId;
-        // 重置人机验证
-        turnstileTokens = {};
-        if (window.turnstile) {
-          window.turnstile.reset();
+        if (!token) {
+            window.location.href = 'auth.html';
         }
-      });
-    });
 
-    // 发送验证码
-    async function sendCode(type) {
-      const emailMap = {
-        register: 'register-email',
-        login: 'code-email',
-        reset: 'reset-email'
-      };
-      const email = document.getElementById(emailMap[type]).value;
-      if (!email) return showMessage(type, '请先输入邮箱', 'error');
-
-      // 获取人机验证token
-      const token = turnstileTokens[`${type}-turnstile`];
-      if (!token) return showMessage(type, '请先完成人机验证', 'error');
-
-      // 按钮倒计时
-      const btn = document.getElementById(`${type}-send-btn`);
-      btn.disabled = true;
-      let countdown = 60;
-      const timer = setInterval(() => {
-        btn.innerText = `${countdown}s后重发`;
-        countdown--;
-        if (countdown < 0) {
-          clearInterval(timer);
-          btn.innerText = '获取验证码';
-          btn.disabled = false;
+        function showMessage(type, text) {
+            const box = document.getElementById('message-box');
+            box.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => box.innerHTML = '', 3000);
         }
-      }, 1000);
 
-      try {
-        const res = await fetch(`${AUTH_BASE_URL}/api/send-code`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, type, turnstileToken: token })
+        function updateQuota(quota) {
+            document.getElementById('quota-text').innerText = `剩余免费额度：${quota}次`;
+        }
+
+        async function getQuota() {
+            try {
+                const res = await fetch(`${API_BASE}/image.php?action=get_quota`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token }
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    updateQuota(data.data.free_quota);
+                }
+            } catch (e) {}
+        }
+
+        getQuota();
+        updateQuota(user.free_quota || 0);
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('ai_image_token');
+            localStorage.removeItem('ai_image_user');
+            window.location.href = 'auth.html';
         });
-        const data = await res.json();
-        if (data.success) {
-          showMessage(type, '验证码发送成功，请注意查收', 'success');
-        } else {
-          showMessage(type, data.message, 'error');
-          // 重置按钮
-          clearInterval(timer);
-          btn.innerText = '获取验证码';
-          btn.disabled = false;
-          // 重置人机验证
-          if (window.turnstile) window.turnstile.reset();
-          turnstileTokens = {};
-        }
-      } catch (err) {
-        showMessage(type, '网络错误，请检查后端地址', 'error');
-        clearInterval(timer);
-        btn.innerText = '获取验证码';
-        btn.disabled = false;
-      }
-    }
 
-    // 注册
-    async function register() {
-      const email = document.getElementById('register-email').value;
-      const password = document.getElementById('register-password').value;
-      const code = document.getElementById('register-code').value;
-      if (!email || !password || !code) return showMessage('register', '所有字段不能为空', 'error');
-      if (password.length < 6) return showMessage('register', '密码至少6位', 'error');
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value.trim();
+            const model = document.getElementById('model').value;
+            const ratio = document.getElementById('ratio').value;
+            const btn = document.getElementById('generate-btn');
 
-      try {
-        const res = await fetch(`${AUTH_BASE_URL}/api/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, code })
+            if (!prompt) return showMessage('error', '请输入图片描述');
+
+            btn.disabled = true;
+            btn.innerText = '生成中...';
+            document.getElementById('result-content').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在生成图片，请稍候...</p>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`${API_BASE}/image.php?action=generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ prompt, model, ratio })
+                });
+                const data = await res.json();
+
+                if (data.code === 200) {
+                    showMessage('success', '图片生成成功！');
+                    updateQuota(data.data.remaining_quota);
+                    document.getElementById('result-content').innerHTML = `
+                        <div class="image-container">
+                            <img src="${data.data.image_url}" alt="生成的图片">
+                        </div>
+                        <a href="${data.data.image_url}" class="download-btn" target="_blank" download>下载图片</a>
+                    `;
+                } else {
+                    showMessage('error', data.msg);
+                    document.getElementById('result-content').innerHTML = `<p style="color: #dc2626;">${data.msg}</p>`;
+                }
+            } catch (e) {
+                showMessage('error', '网络错误，请稍后重试');
+                document.getElementById('result-content').innerHTML = `<p style="color: #dc2626;">网络错误，请稍后重试</p>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '生成图片';
+            }
         });
-        const data = await res.json();
-        if (data.success) {
-          showMessage('register', '注册成功，即将跳转到登录页', 'success');
-          setTimeout(() => {
-            document.querySelector('[data-tab="login"]').click();
-          }, 1500);
-        } else {
-          showMessage('register', data.message, 'error');
-        }
-      } catch (err) {
-        showMessage('register', '网络错误，请检查后端地址', 'error');
-      }
-    }
-
-    // 密码登录
-    async function passwordLogin() {
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
-      if (!email || !password) return showMessage('login', '邮箱和密码不能为空', 'error');
-
-      try {
-        const res = await fetch(`${AUTH_BASE_URL}/api/login/password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          window.location.href = 'dashboard.html';
-        } else {
-          showMessage('login', data.message, 'error');
-        }
-      } catch (err) {
-        showMessage('login', '网络错误，请检查后端地址', 'error');
-      }
-    }
-
-    // 验证码登录
-    async function codeLogin() {
-      const email = document.getElementById('code-email').value;
-      const code = document.getElementById('code-code').value;
-      if (!email || !code) return showMessage('code', '邮箱和验证码不能为空', 'error');
-
-      try {
-        const res = await fetch(`${AUTH_BASE_URL}/api/login/code`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, code })
-        });
-        const data = await res.json();
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          window.location.href = 'dashboard.html';
-        } else {
-          showMessage('code', data.message, 'error');
-        }
-      } catch (err) {
-        showMessage('code', '网络错误，请检查后端地址', 'error');
-      }
-    }
-
-    // 重置密码
-    async function resetPassword() {
-      const email = document.getElementById('reset-email').value;
-      const newPassword = document.getElementById('reset-password').value;
-      const code = document.getElementById('reset-code').value;
-      if (!email || !newPassword || !code) return showMessage('reset', '所有字段不能为空', 'error');
-      if (newPassword.length < 6) return showMessage('reset', '密码至少6位', 'error');
-
-      try {
-        const res = await fetch(`${AUTH_BASE_URL}/api/reset-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, newPassword, code })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showMessage('reset', '密码重置成功，即将跳转到登录页', 'success');
-          setTimeout(() => {
-            document.querySelector('[data-tab="login"]').click();
-          }, 1500);
-        } else {
-          showMessage('reset', data.message, 'error');
-        }
-      } catch (err) {
-        showMessage('reset', '网络错误，请检查后端地址', 'error');
-      }
-    }
-
-    // 提示消息
-    function showMessage(type, text, status) {
-      const el = document.getElementById(`${type}-message`);
-      el.className = `message ${status}`;
-      el.innerText = text;
-      setTimeout(() => { el.innerText = ''; el.className = ''; }, 4000);
-    }
-  </script>
+    </script>
 </body>
 </html>
