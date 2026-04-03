@@ -3,112 +3,677 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI生图平台 - 生成图片</title>
+    <title>AI生图平台</title>
     <style>
-        * {margin: 0;padding: 0;box-sizing: border-box;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;}
-        body {min-height: 100vh;background: #f5f7fa;padding: 20px;}
-        .header {max-width: 800px;margin: 0 auto 20px;display: flex;justify-content: space-between;align-items: center;background: #fff;padding: 16px 20px;border-radius: 12px;box-shadow: 0 2px 10px rgba(0,0,0,0.05);flex-wrap: wrap;gap: 10px;}
-        .header h1 {font-size: 20px;color: #333;}
-        .quota {background: #667eea;color: #fff;padding: 6px 12px;border-radius: 20px;font-size: 14px;font-weight: 500;}
-        .logout-btn {background: #ef4444;color: #fff;border: none;padding: 8px 16px;border-radius: 8px;cursor: pointer;font-weight: 500;}
-        .container {max-width: 800px;margin: 0 auto;background: #fff;border-radius: 16px;box-shadow: 0 2px 10px rgba(0,0,0,0.05);overflow: hidden;}
-        .form-section {padding: 24px;border-bottom: 1px solid #eee;}
-        .form-item {margin-bottom: 20px;}
-        label {display: block;margin-bottom: 8px;color: #333;font-weight: 500;}
-        textarea {width: 100%;padding: 12px 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;min-height: 100px;resize: vertical;transition: border 0.3s;}
-        textarea:focus {outline: none;border-color: #667eea;}
-        .row {display: flex;gap: 15px;flex-wrap: wrap;}
-        .row .form-item {flex: 1;min-width: 200px;margin-bottom: 0;}
-        select {width: 100%;padding: 12px 16px;border: 1px solid #ddd;border-radius: 8px;font-size: 16px;background: #fff;transition: border 0.3s;}
-        select:focus {outline: none;border-color: #667eea;}
-        .generate-btn {width: 100%;padding: 16px;background: #667eea;color: #fff;border: none;border-radius: 8px;font-size: 18px;font-weight: 600;cursor: pointer;transition: background 0.3s;margin-top: 10px;}
-        .generate-btn:hover {background: #5568d3;}
-        .generate-btn:disabled {background: #ccc;cursor: not-allowed;}
-        .result-section {padding: 24px;}
-        .result-section h2 {font-size: 18px;color: #333;margin-bottom: 16px;}
-        .image-container {width: 100%;border-radius: 12px;overflow: hidden;background: #f0f0f0;margin-bottom: 16px;}
-        .image-container img {width: 100%;display: block;}
-        .download-btn {width: 100%;padding: 12px;background: #10b981;color: #fff;border: none;border-radius: 8px;font-size: 16px;font-weight: 600;cursor: pointer;text-decoration: none;display: inline-block;text-align: center;}
-        .loading {text-align: center;padding: 40px 0;color: #666;}
-        .loading .spinner {width: 40px;height: 40px;border: 4px solid #eee;border-top: 4px solid #667eea;border-radius: 50%;animation: spin 1s linear infinite;margin: 0 auto 16px;}
-        @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
-        .message {padding: 12px;border-radius: 8px;margin-bottom: 20px;font-size: 14px;}
-        .message.success {background: #f0f9ff;color: #0d9488;border: 1px solid #99f6e4;}
-        .message.error {background: #fef2f2;color: #dc2626;border: 1px solid #fecaca;}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --gray-100: #f5f7fa;
+            --gray-200: #e2e8f0;
+            --gray-600: #64748b;
+            --gray-800: #1e293b;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--gray-100);
+            padding-bottom: 80px;
+        }
+
+        /* 页面容器 */
+        .page-container {
+            display: none;
+            animation: pageFade 0.3s ease;
+        }
+
+        .page-container.active {
+            display: block;
+        }
+
+        @keyframes pageFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 顶部通用头部 */
+        .header {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 16px 20px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: var(--gray-800);
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 生图页面样式 */
+        .image-container {
+            max-width: 800px;
+            margin: 20px auto 0;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .form-item {
+            margin-bottom: 22px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--gray-800);
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: 10px;
+            font-size: 16px;
+            background: #fff;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .row .form-item {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 0;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-200);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-card {
+            padding: 24px;
+        }
+
+        .result-card h2 {
+            font-size: 18px;
+            color: var(--gray-800);
+            margin-bottom: 16px;
+        }
+
+        .image-box {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--gray-100);
+            margin-bottom: 16px;
+        }
+
+        .image-box img {
+            width: 100%;
+            display: block;
+        }
+
+        .btn-success {
+            width: 100%;
+            padding: 14px;
+            background: var(--success);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--gray-600);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--gray-200);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 14px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.success {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .message::before {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .message.success::before { content: '✓'; }
+        .message.error::before { content: '✕'; }
+
+        /* 聊天页面样式 */
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            height: calc(100vh - 140px);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message-item {
+            max-width: 85%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message-item.user {
+            align-self: flex-end;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #fff;
+            border-radius: 12px 12px 0 12px;
+        }
+
+        .message-item.ai {
+            align-self: flex-start;
+            background: #fff;
+            color: var(--gray-800);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px 12px 12px 0;
+        }
+
+        .chat-input-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input-box textarea {
+            flex: 1;
+            min-height: 50px;
+            max-height: 120px;
+            border: none;
+            padding: 8px;
+            resize: none;
+        }
+
+        .chat-input-box textarea:focus {
+            box-shadow: none;
+        }
+
+        .btn-send {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #fff;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-send:disabled {
+            background: var(--gray-200);
+            cursor: not-allowed;
+        }
+
+        /* 我的页面样式 */
+        .profile-container {
+            max-width: 800px;
+            margin: 20px auto 0;
+            padding: 0 20px;
+        }
+
+        .profile-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            padding: 30px 24px;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .username {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .user-email {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .quota-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            display: inline-block;
+        }
+
+        .quota-text {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .quota-num {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .menu-card {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .menu-item {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item:hover {
+            background: var(--gray-100);
+        }
+
+        .menu-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .menu-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .menu-arrow {
+            color: var(--gray-600);
+            font-size: 18px;
+        }
+
+        .btn-logout {
+            width: 100%;
+            padding: 16px;
+            background: var(--danger);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        /* 底部导航栏 */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: #fff;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            z-index: 999;
+        }
+
+        .tab-item {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-item.active {
+            color: var(--primary);
+        }
+
+        .tab-icon {
+            font-size: 22px;
+        }
+
+        .tab-text {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* 响应式适配 */
         @media (max-width: 600px) {
-            .row {flex-direction: column;gap: 20px;}
-            .row .form-item {min-width: 100%;}
+            .row {
+                flex-direction: column;
+                gap: 20px;
+            }
+            .row .form-item {
+                min-width: 100%;
+            }
+            .message-item {
+                max-width: 90%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>AI生图平台</h1>
-        <div class="quota" id="quota-text">剩余免费额度：0次</div>
-        <button class="logout-btn" id="logout-btn">退出登录</button>
-    </div>
-
-    <div class="container">
-        <div class="form-section">
-            <div id="message-box"></div>
-            <div class="form-item">
-                <label>图片描述（Prompt）</label>
-                <textarea id="prompt" placeholder="请输入详细的图片描述，例如：一只可爱的猫咪，坐在草地上，阳光明媚，高清，8K"></textarea>
-            </div>
-            <div class="row">
-                <div class="form-item">
-                    <label>选择模型</label>
-                    <select id="model">
-                        <option value="sora-image">sora-image</option>
-                        <option value="nano-banana-pro">nano-banana-pro</option>
-                        <option value="gpt-image-1.5">gpt-image-1.5</option>
-                        <option value="nano-banana-fast">nano-banana-fast</option>
-                        <option value="nano-banana-2">nano-banana-2</option>
-                    </select>
-                </div>
-                <div class="form-item">
-                    <label>图片比例</label>
-                    <select id="ratio">
-                        <option value="1:1">1:1 (正方形)</option>
-                        <option value="16:9">16:9 (横屏)</option>
-                        <option value="9:16">9:16 (竖屏)</option>
-                        <option value="4:3">4:3 (横屏)</option>
-                        <option value="3:4">3:4 (竖屏)</option>
-                    </select>
-                </div>
-            </div>
-            <button class="generate-btn" id="generate-btn">生成图片</button>
+    <!-- 生图页面 -->
+    <div class="page-container active" id="image-page">
+        <div class="header">
+            <h1>AI生图</h1>
         </div>
 
-        <div class="result-section">
-            <h2>生成结果</h2>
-            <div id="result-content">
-                <p style="color: #666;">请输入描述并点击生成按钮</p>
+        <div class="image-container">
+            <div class="card">
+                <div class="card-body">
+                    <div id="image-message-box"></div>
+                    <div class="form-item">
+                        <label>图片描述（Prompt）</label>
+                        <textarea id="prompt" placeholder="请输入详细的图片描述，例如：一只可爱的猫咪，坐在草地上，阳光明媚，高清，8K"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="form-item">
+                            <label>选择模型</label>
+                            <select id="model">
+                                <option value="sora-image">sora-image</option>
+                                <option value="nano-banana-pro">nano-banana-pro</option>
+                                <option value="gpt-image-1.5">gpt-image-1.5</option>
+                                <option value="nano-banana-fast">nano-banana-fast</option>
+                                <option value="nano-banana-2">nano-banana-2</option>
+                            </select>
+                        </div>
+                        <div class="form-item">
+                            <label>图片比例</label>
+                            <select id="ratio">
+                                <option value="1:1">1:1 (正方形)</option>
+                                <option value="16:9">16:9 (横屏)</option>
+                                <option value="9:16">9:16 (竖屏)</option>
+                                <option value="4:3">4:3 (横屏)</option>
+                                <option value="3:4">3:4 (竖屏)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-primary" id="generate-btn">生成图片</button>
+                </div>
             </div>
+
+            <div class="card">
+                <div class="result-card">
+                    <h2>生成结果</h2>
+                    <div id="result-content">
+                        <p style="color: var(--gray-600);">请输入描述并点击生成按钮</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI聊天页面 -->
+    <div class="page-container" id="chat-page">
+        <div class="header">
+            <h1>AI聊天助手</h1>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message-item ai">
+                    你好！我是AI生图平台的智能助手，有什么可以帮你的吗？你可以问我AI生图相关的问题，也可以和我聊任何话题~
+                </div>
+            </div>
+
+            <div class="chat-input-box">
+                <textarea id="chat-input" placeholder="输入你想聊的内容，输入「兑换码」可进入兑换码管理页面"></textarea>
+                <button class="btn-send" id="send-btn">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的页面 -->
+    <div class="page-container" id="profile-page">
+        <div class="header">
+            <h1>个人中心</h1>
+        </div>
+
+        <div class="profile-container">
+            <div class="profile-card">
+                <div class="avatar" id="user-avatar">U</div>
+                <div class="username" id="username">AI创作用户</div>
+                <div class="user-email" id="user-email">-</div>
+                <div class="quota-card">
+                    <div class="quota-text">剩余免费生图额度</div>
+                    <div class="quota-num" id="profile-quota">0</div>
+                </div>
+            </div>
+
+            <div class="menu-card">
+                <div class="menu-item" id="redeem-menu">
+                    <div class="menu-item-left">
+                        <div class="menu-icon">🎁</div>
+                        <div class="menu-text">兑换码兑换</div>
+                    </div>
+                    <div class="menu-arrow">></div>
+                </div>
+            </div>
+
+            <button class="btn-logout" id="logout-btn">退出登录</button>
+        </div>
+    </div>
+
+    <!-- 底部导航栏 -->
+    <div class="tab-bar">
+        <div class="tab-item active" data-page="image-page">
+            <div class="tab-icon">🖼️</div>
+            <div class="tab-text">AI生图</div>
+        </div>
+        <div class="tab-item" data-page="chat-page">
+            <div class="tab-icon">💬</div>
+            <div class="tab-text">AI聊天</div>
+        </div>
+        <div class="tab-item" data-page="profile-page">
+            <div class="tab-icon">👤</div>
+            <div class="tab-text">我的</div>
         </div>
     </div>
 
     <script>
-        // 已绑定你的域名，无需修改
+        // 后端API地址
         const API_BASE = 'https://api.liwz.top';
+        // 登录信息
         const token = localStorage.getItem('ai_image_token');
-        const user = JSON.parse(localStorage.getItem('ai_image_user') || '{}');
+        const userInfo = JSON.parse(localStorage.getItem('ai_image_user') || '{}');
+        // 聊天历史
+        let chatHistory = [];
+        // 随机用户名前缀
+        const namePrefix = ['创意', '智能', '灵感', '艺术', '像素', '光影', '奇幻', '治愈'];
+        const nameSuffix = ['画师', '创作者', '设计师', '玩家', '达人', '助手', '家', '客'];
 
+        // 未登录跳转
         if (!token) {
             window.location.href = 'auth.html';
         }
 
-        function showMessage(type, text) {
-            const box = document.getElementById('message-box');
+        // ==================== 通用函数 ====================
+        // 消息提示
+        function showMessage(boxId, type, text) {
+            const box = document.getElementById(boxId || 'image-message-box');
             box.innerHTML = `<div class="message ${type}">${text}</div>`;
-            setTimeout(() => box.innerHTML = '', 3000);
+            setTimeout(() => box.innerHTML = '', 4000);
         }
 
-        function updateQuota(quota) {
-            document.getElementById('quota-text').innerText = `剩余免费额度：${quota}次`;
+        // 随机生成用户名
+        function generateRandomName() {
+            const prefix = namePrefix[Math.floor(Math.random() * namePrefix.length)];
+            const suffix = nameSuffix[Math.floor(Math.random() * nameSuffix.length)];
+            const num = Math.floor(Math.random() * 1000);
+            return `${prefix}${suffix}${num}`;
         }
 
-        async function getQuota() {
+        // 更新用户额度
+        async function updateQuota() {
             try {
                 const res = await fetch(`${API_BASE}/image.php?action=get_quota`, {
                     method: 'POST',
@@ -116,27 +681,55 @@
                 });
                 const data = await res.json();
                 if (data.code === 200) {
-                    updateQuota(data.data.free_quota);
+                    const quota = data.data.free_quota;
+                    document.getElementById('profile-quota').innerText = quota;
+                    // 更新本地存储
+                    userInfo.free_quota = quota;
+                    localStorage.setItem('ai_image_user', JSON.stringify(userInfo));
                 }
             } catch (e) {}
         }
 
-        getQuota();
-        updateQuota(user.free_quota || 0);
+        // 页面加载初始化
+        window.onload = () => {
+            // 初始化用户名
+            let username = localStorage.getItem('ai_username');
+            if (!username) {
+                username = generateRandomName();
+                localStorage.setItem('ai_username', username);
+            }
+            document.getElementById('username').innerText = username;
+            document.getElementById('user-avatar').innerText = username.charAt(0);
+            // 初始化邮箱
+            document.getElementById('user-email').innerText = userInfo.email || '-';
+            // 更新额度
+            updateQuota();
+        };
 
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            localStorage.removeItem('ai_image_token');
-            localStorage.removeItem('ai_image_user');
-            window.location.href = 'auth.html';
+        // ==================== 底部导航切换 ====================
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const pageId = tab.dataset.page;
+                // 切换标签激活状态
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                // 切换页面
+                document.querySelectorAll('.page-container').forEach(page => page.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+            });
         });
 
+        // ==================== AI生图功能（原有功能完全保留） ====================
         document.getElementById('generate-btn').addEventListener('click', async () => {
             const prompt = document.getElementById('prompt').value.trim();
             const model = document.getElementById('model').value;
             const ratio = document.getElementById('ratio').value;
             const btn = document.getElementById('generate-btn');
 
-            if (!prompt) return showMessage('error', '请输入图片描述');
+            if (!prompt) {
+                showMessage('image-message-box', 'error', '请输入图片描述');
+                return;
+            }
 
             btn.disabled = true;
             btn.innerText = '生成中...';
@@ -156,24 +749,143 @@
                 const data = await res.json();
 
                 if (data.code === 200) {
-                    showMessage('success', '图片生成成功！');
-                    updateQuota(data.data.remaining_quota);
+                    showMessage('image-message-box', 'success', '图片生成成功！');
+                    updateQuota();
                     document.getElementById('result-content').innerHTML = `
-                        <div class="image-container">
+                        <div class="image-box">
                             <img src="${data.data.image_url}" alt="生成的图片">
                         </div>
-                        <a href="${data.data.image_url}" class="download-btn" target="_blank" download>下载图片</a>
+                        <a href="${data.data.image_url}" class="btn-success" target="_blank" download>下载图片</a>
                     `;
                 } else {
-                    showMessage('error', data.msg);
-                    document.getElementById('result-content').innerHTML = `<p style="color: #dc2626;">${data.msg}</p>`;
+                    showMessage('image-message-box', 'error', data.msg);
+                    document.getElementById('result-content').innerHTML = `<p style="color: var(--gray-600);">${data.msg}</p>`;
                 }
             } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                document.getElementById('result-content').innerHTML = `<p style="color: #dc2626;">网络错误，请稍后重试</p>`;
+                showMessage('image-message-box', 'error', '网络错误，请稍后重试');
+                document.getElementById('result-content').innerHTML = `<p style="color: var(--gray-600);">网络错误，请稍后重试</p>`;
             } finally {
                 btn.disabled = false;
                 btn.innerText = '生成图片';
+            }
+        });
+
+        // ==================== AI聊天功能 ====================
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            const sendBtn = document.getElementById('send-btn');
+            const messagesBox = document.getElementById('chat-messages');
+
+            if (!content) return;
+
+            // 兑换码触发逻辑
+            if (content === '兑换码') {
+                const pwd = prompt('请输入管理密码：');
+                if (pwd === '330722') {
+                    window.open('admin.html', '_blank');
+                } else if (pwd !== null) {
+                    alert('管理密码错误！');
+                }
+                input.value = '';
+                return;
+            }
+
+            // 清空输入框
+            input.value = '';
+            sendBtn.disabled = true;
+
+            // 添加用户消息
+            chatHistory.push({ role: 'user', content: content });
+            messagesBox.innerHTML += `
+                <div class="message-item user">${content}</div>
+            `;
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            // 添加AI加载状态
+            const loadingId = 'loading-' + Date.now();
+            messagesBox.innerHTML += `
+                <div class="message-item ai" id="${loadingId}">
+                    <div class="spinner" style="width: 20px; height: 20px; margin: 0;"></div>
+                </div>
+            `;
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            try {
+                const res = await fetch(`${API_BASE}/chat.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ messages: chatHistory })
+                });
+                const data = await res.json();
+
+                // 移除加载状态
+                document.getElementById(loadingId)?.remove();
+
+                if (data.code === 200) {
+                    const reply = data.data.reply;
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    messagesBox.innerHTML += `
+                        <div class="message-item ai">${reply}</div>
+                    `;
+                } else {
+                    messagesBox.innerHTML += `
+                        <div class="message-item ai">抱歉，我暂时无法回答你的问题，请稍后重试。</div>
+                    `;
+                }
+            } catch (e) {
+                document.getElementById(loadingId)?.remove();
+                messagesBox.innerHTML += `
+                    <div class="message-item ai">网络错误，请检查网络后重试。</div>
+                `;
+            } finally {
+                sendBtn.disabled = false;
+                messagesBox.scrollTop = messagesBox.scrollHeight;
+            }
+        }
+
+        // 发送按钮点击
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        // 回车发送
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // ==================== 个人中心功能 ====================
+        // 退出登录
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('ai_image_token');
+                localStorage.removeItem('ai_image_user');
+                window.location.href = 'auth.html';
+            }
+        });
+
+        // 兑换码兑换
+        document.getElementById('redeem-menu').addEventListener('click', async () => {
+            const code = prompt('请输入兑换码：');
+            if (!code) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/code.php?action=redeem`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await res.json();
+
+                if (data.code === 200) {
+                    alert(`兑换成功！已为您增加${data.data.added_quota}次生图额度，当前总额度：${data.data.total_quota}`);
+                    updateQuota();
+                } else {
+                    alert(data.msg);
+                }
+            } catch (e) {
+                alert('网络错误，请稍后重试');
             }
         });
     </script>
