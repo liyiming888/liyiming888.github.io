@@ -4,972 +4,375 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI生图平台 - 账号登录</title>
-    <!-- 预加载Cloudflare节点，极致提速，解决加载慢 -->
-    <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
-    <link rel="dns-prefetch" href="https://challenges.cloudflare.com">
-    <!-- 显式渲染模式，解决时序问题，秒出验证框 -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-        }
-
-        /* 渐变背景，和你的页面风格统一 */
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            background-size: 200% 200%;
-            animation: bgGradient 15s ease infinite;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        @keyframes bgGradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        /* 毛玻璃主卡片 */
-        .container {
-            width: 100%;
-            max-width: 420px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        /* 顶部标签栏 */
-        .tabs {
-            display: flex;
-            background: rgba(102, 126, 234, 0.05);
-            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-        }
-
-        .tab {
-            flex: 1;
-            padding: 18px 12px;
-            text-align: center;
-            cursor: pointer;
-            font-weight: 600;
-            color: #64748b;
-            transition: all 0.3s ease;
-            position: relative;
-            font-size: 15px;
-            user-select: none;
-        }
-
-        .tab.active {
-            color: #667eea;
-        }
-
-        .tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            width: 80%;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            border-radius: 3px 3px 0 0;
-            animation: tabSlide 0.3s ease;
-        }
-
-        @keyframes tabSlide {
-            from { width: 0; left: 50%; }
-            to { width: 80%; left: 10%; }
-        }
-
-        .tab:hover:not(.active) {
-            color: #475569;
-            background: rgba(102, 126, 234, 0.03);
-        }
-
-        .form-container {
-            padding: 32px 24px;
-        }
-
-        /* 消息提示框 */
-        .message {
-            padding: 14px 16px;
-            border-radius: 10px;
-            margin-bottom: 24px;
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: messageSlide 0.3s ease;
-        }
-
-        @keyframes messageSlide {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.success {
-            background: #ecfdf5;
-            color: #059669;
-            border: 1px solid #a7f3d0;
-        }
-
-        .message.error {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-
-        .message.warning {
-            background: #fffbeb;
-            color: #d97706;
-            border: 1px solid #fed7aa;
-        }
-
-        .message::before {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .message.success::before { content: '✓'; }
-        .message.error::before { content: '✕'; }
-        .message.warning::before { content: '⚠'; }
-
-        /* 表单面板 */
-        .form-panel {
-            display: none;
-            animation: panelFade 0.3s ease;
-        }
-
-        .form-panel.active {
-            display: block;
-        }
-
-        @keyframes panelFade {
-            from { opacity: 0; transform: translateX(10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .form-item {
-            margin-bottom: 22px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 15px;
-        }
-
-        /* 输入框美化 */
-        input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 16px;
-            background: #fff;
-            transition: all 0.3s ease;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-
-        input.error {
-            border-color: #dc2626;
-            box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
-        }
-
-        input::placeholder {
-            color: #94a3b8;
-        }
-
-        .input-tip {
-            margin-top: 6px;
-            font-size: 12px;
-            color: #dc2626;
-            font-weight: 500;
-            display: none;
-        }
-
-        .input-tip.show {
-            display: block;
-        }
-
-        /* 验证码行布局 */
-        .code-row {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .code-row .form-item {
-            flex: 1;
-            margin-bottom: 0;
-        }
-
-        /* 验证码按钮 */
-        .code-btn {
-            width: 125px;
-            padding: 14px 0;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .code-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .code-btn:disabled {
-            background: #cbd5e1;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* 提交按钮 */
-        .submit-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .submit-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .submit-btn:disabled {
-            background: #cbd5e1;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .tip {
-            text-align: center;
-            margin-top: 22px;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .tip a {
-            color: #667eea;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .tip a:hover {
-            text-decoration: underline;
-        }
-
-        /* 人机验证容器，固定尺寸，确保手机端必显示，解决不渲染问题 */
-        .cf-container {
-            margin: 18px 0;
-            width: 100%;
-            min-height: 65px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 10px;
-            background: rgba(102, 126, 234, 0.03);
-            border: 1px solid rgba(102, 126, 234, 0.15);
-            padding: 5px;
-        }
-
-        .cf-retry {
-            color: #667eea;
-            font-size: 13px;
-            cursor: pointer;
-            text-decoration: underline;
-            margin-top: 8px;
-            display: none;
-            text-align: center;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif;}
+        body{background:linear-gradient(135deg,#667eea 0,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+        .container{width:100%;max-width:420px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.2);overflow:hidden;}
+        .header{padding:30px;text-align:center;background:linear-gradient(135deg,#667eea 0,#764ba2 100%);color:#fff;}
+        .header h1{font-size:28px;margin-bottom:8px;}
+        .header p{font-size:14px;opacity:0.9;}
+        .tabs{display:flex;border-bottom:1px solid #eee;}
+        .tab{flex:1;padding:15px;text-align:center;cursor:pointer;font-size:16px;color:#666;transition:all 0.3s;}
+        .tab.active{color:#667eea;border-bottom:3px solid #667eea;font-weight:bold;}
+        .form-container{padding:30px;}
+        .form-item{display:none;}
+        .form-item.active{display:block;animation:fadeIn 0.3s;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        .input-group{margin-bottom:20px;}
+        .input-group label{display:block;margin-bottom:8px;color:#333;font-size:14px;}
+        .input-group input{width:100%;padding:12px 15px;border:1px solid #ddd;border-radius:8px;font-size:16px;transition:border 0.3s;}
+        .input-group input:focus{outline:none;border-color:#667eea;}
+        .code-input{display:flex;gap:10px;}
+        .code-input input{flex:1;}
+        .code-input button{width:120px;white-space:nowrap;padding:12px 10px;border:none;border-radius:8px;background:#667eea;color:#fff;font-size:14px;cursor:pointer;transition:background 0.3s;}
+        .code-input button:disabled{background:#ccc;cursor:not-allowed;}
+        .cf-box{margin-bottom:20px;display:flex;justify-content:center;}
+        .btn{width:100%;padding:14px;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea 0,#764ba2 100%);color:#fff;font-size:16px;font-weight:bold;cursor:pointer;transition:transform 0.2s;}
+        .btn:hover{transform:translateY(-2px);}
+        .btn:disabled{background:#ccc;cursor:not-allowed;transform:none;}
+        .tip{text-align:center;margin-top:20px;font-size:14px;color:#666;}
+        .tip a{color:#667eea;cursor:pointer;text-decoration:none;}
+        .message{padding:12px;border-radius:8px;margin-bottom:20px;font-size:14px;display:none;}
+        .message.success{background:#e8f5e9;color:#2e7d32;display:block;}
+        .message.error{background:#ffebee;color:#c62828;display:block;}
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="header">
+            <h1>AI生图平台</h1>
+            <p>用AI创作无限可能</p>
+        </div>
         <div class="tabs">
-            <div class="tab active" data-tab="login">密码登录</div>
+            <div class="tab active" data-tab="password">密码登录</div>
             <div class="tab" data-tab="code">验证码登录</div>
             <div class="tab" data-tab="register">注册</div>
         </div>
-
         <div class="form-container">
-            <div id="message-box"></div>
+            <div class="message" id="message"></div>
 
-            <!-- 密码登录面板 -->
-            <div class="form-panel active" id="login-panel">
-                <div class="form-item">
-                    <label>邮箱地址</label>
-                    <input type="email" id="login-email" placeholder="请输入注册的邮箱">
-                    <div class="input-tip" id="login-email-tip">请输入有效的邮箱地址</div>
+            <!-- 密码登录表单 -->
+            <div class="form-item active" id="password-form">
+                <div class="input-group">
+                    <label>邮箱</label>
+                    <input type="email" id="login-email" placeholder="请输入您的邮箱">
                 </div>
-                <div class="form-item">
+                <div class="input-group">
                     <label>密码</label>
-                    <input type="password" id="login-password" placeholder="请输入密码">
-                    <div class="input-tip" id="login-pwd-tip">请输入密码</div>
+                    <input type="password" id="login-password" placeholder="请输入您的密码">
                 </div>
-                <button class="submit-btn" id="login-submit">登录</button>
-                <div class="tip">
-                    <a onclick="switchTab('reset')">忘记密码？</a>
-                </div>
+                <button class="btn" id="login-password-btn">登录</button>
+                <p class="tip">忘记密码？<a onclick="switchTab('reset')">点击找回</a></p>
+                <p class="tip">还没有账号？<a onclick="switchTab('register')">立即注册</a></p>
             </div>
 
-            <!-- 验证码登录面板 -->
-            <div class="form-panel" id="code-panel">
-                <div class="form-item">
-                    <label>邮箱地址</label>
-                    <input type="email" id="code-email" placeholder="请输入注册的邮箱">
-                    <div class="input-tip" id="code-email-tip">请输入有效的邮箱地址</div>
+            <!-- 验证码登录表单 -->
+            <div class="form-item" id="code-form">
+                <div class="input-group">
+                    <label>邮箱</label>
+                    <input type="email" id="code-email" placeholder="请输入您的邮箱">
                 </div>
-                <!-- 人机验证容器，固定尺寸，必渲染 -->
-                <div class="cf-container">
-                    <div id="code-cf"></div>
-                </div>
-                <div class="cf-retry" id="code-cf-retry" onclick="renderCF('code')">加载失败？点击重试</div>
-                <div class="form-item">
+                <div class="cf-box" id="code-cf"></div>
+                <div class="input-group">
                     <label>验证码</label>
-                    <div class="code-row">
-                        <div class="form-item">
-                            <input type="text" id="code-code" placeholder="请输入6位验证码" maxlength="6">
-                            <div class="input-tip" id="code-code-tip">请输入6位数字验证码</div>
-                        </div>
-                        <button class="code-btn" id="code-send">获取验证码</button>
+                    <div class="code-input">
+                        <input type="text" id="code-code" placeholder="请输入6位验证码" maxlength="6">
+                        <button id="send-code-btn">获取验证码</button>
                     </div>
                 </div>
-                <button class="submit-btn" id="code-submit">登录</button>
+                <button class="btn" id="login-code-btn">登录</button>
+                <p class="tip">还没有账号？<a onclick="switchTab('register')">立即注册</a></p>
             </div>
 
-            <!-- 注册面板 -->
-            <div class="form-panel" id="register-panel">
-                <div class="form-item">
-                    <label>邮箱地址</label>
+            <!-- 注册表单 -->
+            <div class="form-item" id="register-form">
+                <div class="input-group">
+                    <label>邮箱</label>
                     <input type="email" id="register-email" placeholder="请输入您的邮箱">
-                    <div class="input-tip" id="register-email-tip">请输入有效的邮箱地址</div>
                 </div>
-                <!-- 人机验证容器，固定尺寸，必渲染 -->
-                <div class="cf-container">
-                    <div id="register-cf"></div>
-                </div>
-                <div class="cf-retry" id="register-cf-retry" onclick="renderCF('register')">加载失败？点击重试</div>
-                <div class="form-item">
+                <div class="cf-box" id="register-cf"></div>
+                <div class="input-group">
                     <label>验证码</label>
-                    <div class="code-row">
-                        <div class="form-item">
-                            <input type="text" id="register-code" placeholder="请输入6位验证码" maxlength="6">
-                            <div class="input-tip" id="register-code-tip">请输入6位数字验证码</div>
-                        </div>
-                        <button class="code-btn" id="register-send">获取验证码</button>
+                    <div class="code-input">
+                        <input type="text" id="register-code" placeholder="请输入6位验证码" maxlength="6">
+                        <button id="register-send-code-btn">获取验证码</button>
                     </div>
                 </div>
-                <div class="form-item">
+                <div class="input-group">
                     <label>设置密码</label>
                     <input type="password" id="register-password" placeholder="请设置6位以上密码">
-                    <div class="input-tip" id="register-pwd-tip">密码长度不能少于6位</div>
                 </div>
-                <button class="submit-btn" id="register-submit">注册并登录</button>
+                <button class="btn" id="register-btn">完成注册</button>
+                <p class="tip">已有账号？<a onclick="switchTab('password')">立即登录</a></p>
             </div>
 
-            <!-- 找回密码面板 -->
-            <div class="form-panel" id="reset-panel">
-                <div class="form-item">
-                    <label>邮箱地址</label>
-                    <input type="email" id="reset-email" placeholder="请输入注册的邮箱">
-                    <div class="input-tip" id="reset-email-tip">请输入有效的邮箱地址</div>
+            <!-- 找回密码表单 -->
+            <div class="form-item" id="reset-form">
+                <div class="input-group">
+                    <label>邮箱</label>
+                    <input type="email" id="reset-email" placeholder="请输入您的邮箱">
                 </div>
-                <!-- 人机验证容器，固定尺寸，必渲染 -->
-                <div class="cf-container">
-                    <div id="reset-cf"></div>
-                </div>
-                <div class="cf-retry" id="reset-cf-retry" onclick="renderCF('reset')">加载失败？点击重试</div>
-                <div class="form-item">
+                <div class="cf-box" id="reset-cf"></div>
+                <div class="input-group">
                     <label>验证码</label>
-                    <div class="code-row">
-                        <div class="form-item">
-                            <input type="text" id="reset-code" placeholder="请输入6位验证码" maxlength="6">
-                            <div class="input-tip" id="reset-code-tip">请输入6位数字验证码</div>
-                        </div>
-                        <button class="code-btn" id="reset-send">获取验证码</button>
+                    <div class="code-input">
+                        <input type="text" id="reset-code" placeholder="请输入6位验证码" maxlength="6">
+                        <button id="reset-send-code-btn">获取验证码</button>
                     </div>
                 </div>
-                <div class="form-item">
+                <div class="input-group">
                     <label>新密码</label>
                     <input type="password" id="reset-password" placeholder="请设置6位以上新密码">
-                    <div class="input-tip" id="reset-pwd-tip">新密码长度不能少于6位</div>
                 </div>
-                <button class="submit-btn" id="reset-submit">重置密码</button>
-                <div class="tip">
-                    <a onclick="switchTab('login')">返回登录</a>
-                </div>
+                <button class="btn" id="reset-btn">重置密码</button>
+                <p class="tip"><a onclick="switchTab('password')">返回登录</a></p>
             </div>
         </div>
     </div>
 
     <script>
-        // 后端API地址
-        const API_BASE = 'https://api.liwz.top';
-        // 你的Cloudflare Site Key（和后端保持一致）
+        // 后端API地址（你的域名，已配置好）
+        const API_BASE = 'https://liwz.top';
         const CF_SITE_KEY = '0x4AAAAAACyGeLsKIbpjbRer';
-        // 存储人机验证结果
-        let cfToken = {
-            register: '',
-            code: '',
-            reset: ''
+        let cfWidgets = {};
+
+        // 页面加载完成
+        window.onload = function() {
+            // 已登录则跳转到生图页
+            if (localStorage.getItem('aiimage_token')) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 加载Cloudflare人机验证
+            turnstile.ready(function() {
+                cfWidgets.code = turnstile.render('#code-cf', {
+                    sitekey: CF_SITE_KEY,
+                    theme: 'light',
+                    size: 'normal'
+                });
+                cfWidgets.register = turnstile.render('#register-cf', {
+                    sitekey: CF_SITE_KEY,
+                    theme: 'light',
+                    size: 'normal'
+                });
+                cfWidgets.reset = turnstile.render('#reset-cf', {
+                    sitekey: CF_SITE_KEY,
+                    theme: 'light',
+                    size: 'normal'
+                });
+            });
+
+            // 标签切换事件
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
         };
-        // 存储当前激活的面板
-        let activeTab = 'login';
 
-        // ==================== 通用工具函数 ====================
-        // 消息提示
-        function showMessage(type, text) {
-            const box = document.getElementById('message-box');
-            box.innerHTML = `<div class="message ${type}">${text}</div>`;
-            setTimeout(() => box.innerHTML = '', 4000);
+        // 切换标签页
+        function switchTab(tabName) {
+            // 切换标签激活状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === tabName) tab.classList.add('active');
+            });
+
+            // 切换表单显示
+            document.querySelectorAll('.form-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-form`).classList.add('active');
+            showMessage(''); // 清空提示
         }
 
-        // 邮箱格式校验
-        function validateEmail(email) {
-            const reg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return reg.test(email);
+        // 显示提示消息
+        function showMessage(text, type = '') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = 'message';
+            if (type) msgEl.classList.add(type);
         }
 
-        // 倒计时函数
-        function countdown(btn, seconds = 60) {
-            btn.disabled = true;
+        // 验证码倒计时
+        function countdown(btnEl, seconds = 60) {
             let left = seconds;
+            btnEl.disabled = true;
             const timer = setInterval(() => {
                 left--;
-                btn.innerText = `${left}秒后重发`;
+                btnEl.textContent = `${left}秒后重发`;
                 if (left <= 0) {
                     clearInterval(timer);
-                    btn.innerText = '获取验证码';
-                    btn.disabled = false;
+                    btnEl.disabled = false;
+                    btnEl.textContent = '获取验证码';
                 }
             }, 1000);
         }
 
-        // ==================== 人机验证核心渲染函数（解决慢/不触发问题） ====================
-        function renderCF(type) {
-            const targetEl = document.getElementById(`${type}-cf`);
-            const retryEl = document.getElementById(`${type}-cf-retry`);
-            if (!targetEl) return;
-
-            // 重置容器和状态
-            targetEl.innerHTML = '';
-            retryEl.style.display = 'none';
-            cfToken[type] = '';
-
-            // 检查Cloudflare脚本是否加载完成
-            if (!window.turnstile) {
-                retryEl.style.display = 'block';
-                showMessage('warning', '人机验证加载失败，请点击重试按钮');
+        // 通用发送验证码函数
+        async function sendCode(email, cfWidget, btnEl) {
+            // 校验邮箱
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入正确的邮箱地址', 'error');
+                return;
+            }
+            // 校验人机验证
+            const cfToken = turnstile.getResponse(cfWidget);
+            if (!cfToken) {
+                showMessage('请先完成人机验证', 'error');
                 return;
             }
 
-            // 显式渲染验证框，固定参数，手机端100%兼容
-            window.turnstile.render(targetEl, {
-                sitekey: CF_SITE_KEY,
-                theme: 'light',
-                size: 'normal',
-                retry: 'auto',
-                refreshExpired: 'auto',
-                // 验证成功回调
-                callback: (token) => {
-                    cfToken[type] = token;
-                    showMessage('success', '人机验证通过！');
-                },
-                // 验证过期回调
-                'expired-callback': () => {
-                    cfToken[type] = '';
-                    showMessage('warning', '人机验证已过期，将自动刷新');
-                    renderCF(type);
-                },
-                // 验证失败回调
-                'error-callback': () => {
-                    cfToken[type] = '';
-                    showMessage('error', '人机验证失败，请重试');
-                    retryEl.style.display = 'block';
-                },
-                // 加载完成回调
-                'after-load': () => {
-                    console.log(`人机验证 ${type} 渲染完成`);
-                    retryEl.style.display = 'none';
+            try {
+                const res = await fetch(`${API_BASE}/auth.php`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'send_code', email: email, cf_token: cfToken})
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showMessage(data.msg, 'success');
+                    countdown(btnEl); // 开始倒计时
+                    turnstile.reset(cfWidget); // 重置人机验证
+                } else {
+                    showMessage(data.msg, 'error');
+                    turnstile.reset(cfWidget);
                 }
-            });
+            } catch (e) {
+                showMessage('网络错误，请重试', 'error');
+                turnstile.reset(cfWidget);
+            }
         }
 
-        // ==================== 标签页切换函数 ====================
-        function switchTab(tabName) {
-            activeTab = tabName;
-            // 切换标签激活状态
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.form-panel').forEach(panel => panel.classList.remove('active'));
-            
-            // 切换对应面板
-            if (tabName === 'login') {
-                document.querySelector('[data-tab="login"]').classList.add('active');
-                document.getElementById('login-panel').classList.add('active');
-            } else if (tabName === 'code') {
-                document.querySelector('[data-tab="code"]').classList.add('active');
-                document.getElementById('code-panel').classList.add('active');
-                // 确保验证框已渲染
-                if (!cfToken.code && window.turnstile) renderCF('code');
-            } else if (tabName === 'register') {
-                document.querySelector('[data-tab="register"]').classList.add('active');
-                document.getElementById('register-panel').classList.add('active');
-                // 确保验证框已渲染
-                if (!cfToken.register && window.turnstile) renderCF('register');
-            } else if (tabName === 'reset') {
-                document.getElementById('reset-panel').classList.add('active');
-                // 确保验证框已渲染
-                if (!cfToken.reset && window.turnstile) renderCF('reset');
-            }
-
-            // 清空消息和错误提示
-            document.getElementById('message-box').innerHTML = '';
-            document.querySelectorAll('.input-tip').forEach(tip => tip.classList.remove('show'));
-            document.querySelectorAll('input').forEach(input => input.classList.remove('error'));
-        }
-
-        // ==================== 页面加载初始化 ====================
-        window.onload = () => {
-            // 检查登录状态，已登录直接跳转到主页
-            const token = localStorage.getItem('ai_image_token');
-            if (token) {
-                fetch(`${API_BASE}/auth.php?action=check_token`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token })
-                }).then(res => res.json()).then(data => {
-                    if (data.code === 200) window.location.href = 'index.html';
-                    else {
-                        localStorage.removeItem('ai_image_token');
-                        localStorage.removeItem('ai_image_user');
-                    }
-                }).catch(() => {});
-            }
-
-            // 页面加载完成后，预渲染所有人机验证框（解决切换慢的问题）
-            if (window.turnstile) {
-                renderCF('code');
-                renderCF('register');
-                renderCF('reset');
-            } else {
-                // 脚本加载完成后自动渲染
-                window.onloadTurnstile = () => {
-                    renderCF('code');
-                    renderCF('register');
-                    renderCF('reset');
-                };
-            }
-        };
-
-        // ==================== 标签页点击事件绑定 ====================
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+        // 验证码登录-发送验证码
+        document.getElementById('send-code-btn').addEventListener('click', function() {
+            const email = document.getElementById('code-email').value;
+            sendCode(email, cfWidgets.code, this);
         });
 
-        // ==================== 注册功能逻辑 ====================
-        // 注册-获取验证码
-        document.getElementById('register-send').addEventListener('click', async () => {
-            const email = document.getElementById('register-email').value.trim();
-            const emailInput = document.getElementById('register-email');
-            const emailTip = document.getElementById('register-email-tip');
-
-            // 邮箱格式校验
-            if (!validateEmail(email)) {
-                emailInput.classList.add('error');
-                emailTip.classList.add('show');
-                showMessage('error', '请输入有效的邮箱地址');
-                return;
-            }
-            emailInput.classList.remove('error');
-            emailTip.classList.remove('show');
-
-            // 人机验证校验（核心，解决没验证就发送的问题）
-            if (!cfToken.register) {
-                showMessage('error', '请先完成人机验证');
-                return;
-            }
-
-            const btn = document.getElementById('register-send');
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE}/auth.php?action=send_code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email: email, 
-                        type: 'register', 
-                        cf_token: cfToken.register 
-                    })
-                });
-                const data = await res.json();
-
-                if (data.code === 200) {
-                    showMessage('success', data.msg);
-                    countdown(btn); // 启动倒计时
-                } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
-                    // 验证失败，重置人机验证
-                    window.turnstile?.reset('register-cf');
-                    cfToken.register = '';
-                }
-            } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
-            }
+        // 注册-发送验证码
+        document.getElementById('register-send-code-btn').addEventListener('click', function() {
+            const email = document.getElementById('register-email').value;
+            sendCode(email, cfWidgets.register, this);
         });
 
-        // 注册-提交注册
-        document.getElementById('register-submit').addEventListener('click', async () => {
-            const email = document.getElementById('register-email').value.trim();
-            const code = document.getElementById('register-code').value.trim();
-            const password = document.getElementById('register-password').value;
-
-            // 表单校验
-            let hasError = false;
-            if (!validateEmail(email)) {
-                document.getElementById('register-email').classList.add('error');
-                document.getElementById('register-email-tip').classList.add('show');
-                hasError = true;
-            }
-            if (code.length !== 6) {
-                document.getElementById('register-code').classList.add('error');
-                document.getElementById('register-code-tip').classList.add('show');
-                hasError = true;
-            }
-            if (password.length < 6) {
-                document.getElementById('register-password').classList.add('error');
-                document.getElementById('register-pwd-tip').classList.add('show');
-                hasError = true;
-            }
-            if (hasError) {
-                showMessage('error', '请完善表单信息');
-                return;
-            }
-
-            const btn = document.getElementById('register-submit');
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE}/auth.php?action=register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, code, password })
-                });
-                const data = await res.json();
-
-                if (data.code === 200) {
-                    showMessage('success', '注册成功，正在跳转...');
-                    localStorage.setItem('ai_image_token', data.data.token);
-                    localStorage.setItem('ai_image_user', JSON.stringify(data.data));
-                    setTimeout(() => window.location.href = 'index.html', 1000);
-                } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
-                }
-            } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
-            }
+        // 找回密码-发送验证码
+        document.getElementById('reset-send-code-btn').addEventListener('click', function() {
+            const email = document.getElementById('reset-email').value;
+            sendCode(email, cfWidgets.reset, this);
         });
 
-        // ==================== 验证码登录功能逻辑 ====================
-        // 验证码登录-获取验证码
-        document.getElementById('code-send').addEventListener('click', async () => {
-            const email = document.getElementById('code-email').value.trim();
-            const emailInput = document.getElementById('code-email');
-            const emailTip = document.getElementById('code-email-tip');
-
-            if (!validateEmail(email)) {
-                emailInput.classList.add('error');
-                emailTip.classList.add('show');
-                showMessage('error', '请输入有效的邮箱地址');
-                return;
-            }
-            emailInput.classList.remove('error');
-            emailTip.classList.remove('show');
-
-            if (!cfToken.code) {
-                showMessage('error', '请先完成人机验证');
-                return;
-            }
-
-            const btn = document.getElementById('code-send');
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE}/auth.php?action=send_code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email: email, 
-                        type: 'login', 
-                        cf_token: cfToken.code 
-                    })
-                });
-                const data = await res.json();
-
-                if (data.code === 200) {
-                    showMessage('success', data.msg);
-                    countdown(btn);
-                } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
-                    window.turnstile?.reset('code-cf');
-                    cfToken.code = '';
-                }
-            } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
-            }
-        });
-
-        // 验证码登录-提交登录
-        document.getElementById('code-submit').addEventListener('click', async () => {
-            const email = document.getElementById('code-email').value.trim();
-            const code = document.getElementById('code-code').value.trim();
-
-            let hasError = false;
-            if (!validateEmail(email)) {
-                document.getElementById('code-email').classList.add('error');
-                document.getElementById('code-email-tip').classList.add('show');
-                hasError = true;
-            }
-            if (code.length !== 6) {
-                document.getElementById('code-code').classList.add('error');
-                document.getElementById('code-code-tip').classList.add('show');
-                hasError = true;
-            }
-            if (hasError) {
-                showMessage('error', '请完善表单信息');
-                return;
-            }
-
-            const btn = document.getElementById('code-submit');
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE}/auth.php?action=login_code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, code })
-                });
-                const data = await res.json();
-
-                if (data.code === 200) {
-                    showMessage('success', '登录成功，正在跳转...');
-                    localStorage.setItem('ai_image_token', data.data.token);
-                    localStorage.setItem('ai_image_user', JSON.stringify(data.data));
-                    setTimeout(() => window.location.href = 'index.html', 1000);
-                } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
-                }
-            } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
-            }
-        });
-
-        // ==================== 密码登录功能逻辑 ====================
-        document.getElementById('login-submit').addEventListener('click', async () => {
-            const email = document.getElementById('login-email').value.trim();
+        // 密码登录
+        document.getElementById('login-password-btn').addEventListener('click', async function() {
+            const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-
-            let hasError = false;
-            if (!validateEmail(email)) {
-                document.getElementById('login-email').classList.add('error');
-                document.getElementById('login-email-tip').classList.add('show');
-                hasError = true;
-            }
-            if (!password) {
-                document.getElementById('login-password').classList.add('error');
-                document.getElementById('login-pwd-tip').classList.add('show');
-                hasError = true;
-            }
-            if (hasError) {
-                showMessage('error', '请完善表单信息');
-                return;
-            }
-
-            const btn = document.getElementById('login-submit');
-            btn.disabled = true;
+            this.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}/auth.php?action=login_password`, {
+                const res = await fetch(`${API_BASE}/auth.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'login_password', email: email, password: password})
                 });
                 const data = await res.json();
-
                 if (data.code === 200) {
-                    showMessage('success', '登录成功，正在跳转...');
-                    localStorage.setItem('ai_image_token', data.data.token);
-                    localStorage.setItem('ai_image_user', JSON.stringify(data.data));
+                    showMessage(data.msg, 'success');
+                    // 保存登录信息
+                    localStorage.setItem('aiimage_token', data.data.token);
+                    localStorage.setItem('aiimage_user', JSON.stringify(data.data));
                     setTimeout(() => window.location.href = 'index.html', 1000);
                 } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
+                    showMessage(data.msg, 'error');
+                    this.disabled = false;
                 }
             } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
+                showMessage('网络错误，请重试', 'error');
+                this.disabled = false;
             }
         });
 
-        // ==================== 找回密码功能逻辑 ====================
-        // 找回密码-获取验证码
-        document.getElementById('reset-send').addEventListener('click', async () => {
-            const email = document.getElementById('reset-email').value.trim();
-            const emailInput = document.getElementById('reset-email');
-            const emailTip = document.getElementById('reset-email-tip');
-
-            if (!validateEmail(email)) {
-                emailInput.classList.add('error');
-                emailTip.classList.add('show');
-                showMessage('error', '请输入有效的邮箱地址');
-                return;
-            }
-            emailInput.classList.remove('error');
-            emailTip.classList.remove('show');
-
-            if (!cfToken.reset) {
-                showMessage('error', '请先完成人机验证');
-                return;
-            }
-
-            const btn = document.getElementById('reset-send');
-            btn.disabled = true;
+        // 验证码登录
+        document.getElementById('login-code-btn').addEventListener('click', async function() {
+            const email = document.getElementById('code-email').value;
+            const code = document.getElementById('code-code').value;
+            this.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}/auth.php?action=send_code`, {
+                const res = await fetch(`${API_BASE}/auth.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email: email, 
-                        type: 'reset_password', 
-                        cf_token: cfToken.reset 
-                    })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'login_code', email: email, code: code})
                 });
                 const data = await res.json();
-
                 if (data.code === 200) {
-                    showMessage('success', data.msg);
-                    countdown(btn);
+                    showMessage(data.msg, 'success');
+                    localStorage.setItem('aiimage_token', data.data.token);
+                    localStorage.setItem('aiimage_user', JSON.stringify(data.data));
+                    setTimeout(() => window.location.href = 'index.html', 1000);
                 } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
-                    window.turnstile?.reset('reset-cf');
-                    cfToken.reset = '';
+                    showMessage(data.msg, 'error');
+                    this.disabled = false;
                 }
             } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
+                showMessage('网络错误，请重试', 'error');
+                this.disabled = false;
             }
         });
 
-        // 找回密码-提交重置
-        document.getElementById('reset-submit').addEventListener('click', async () => {
-            const email = document.getElementById('reset-email').value.trim();
-            const code = document.getElementById('reset-code').value.trim();
-            const newPassword = document.getElementById('reset-password').value;
-
-            let hasError = false;
-            if (!validateEmail(email)) {
-                document.getElementById('reset-email').classList.add('error');
-                document.getElementById('reset-email-tip').classList.add('show');
-                hasError = true;
-            }
-            if (code.length !== 6) {
-                document.getElementById('reset-code').classList.add('error');
-                document.getElementById('reset-code-tip').classList.add('show');
-                hasError = true;
-            }
-            if (newPassword.length < 6) {
-                document.getElementById('reset-password').classList.add('error');
-                document.getElementById('reset-pwd-tip').classList.add('show');
-                hasError = true;
-            }
-            if (hasError) {
-                showMessage('error', '请完善表单信息');
-                return;
-            }
-
-            const btn = document.getElementById('reset-submit');
-            btn.disabled = true;
+        // 注册提交
+        document.getElementById('register-btn').addEventListener('click', async function() {
+            const email = document.getElementById('register-email').value;
+            const code = document.getElementById('register-code').value;
+            const password = document.getElementById('register-password').value;
+            this.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}/auth.php?action=reset_password`, {
+                const res = await fetch(`${API_BASE}/auth.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, code, new_password: newPassword })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'register', email: email, code: code, password: password})
                 });
                 const data = await res.json();
-
                 if (data.code === 200) {
-                    showMessage('success', '密码重置成功，正在跳转...');
-                    setTimeout(() => switchTab('login'), 1500);
+                    showMessage(data.msg, 'success');
+                    setTimeout(() => switchTab('password'), 1500);
                 } else {
-                    showMessage('error', data.msg);
-                    btn.disabled = false;
+                    showMessage(data.msg, 'error');
+                    this.disabled = false;
                 }
             } catch (e) {
-                showMessage('error', '网络错误，请稍后重试');
-                btn.disabled = false;
+                showMessage('网络错误，请重试', 'error');
+                this.disabled = false;
             }
         });
 
-        // ==================== 回车快捷登录 ====================
-        // 密码登录回车
-        document.getElementById('login-password').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('login-submit').click();
-        });
-        // 注册回车
-        document.getElementById('register-password').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('register-submit').click();
-        });
-        // 验证码登录回车
-        document.getElementById('code-code').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('code-submit').click();
-        });
-        // 找回密码回车
-        document.getElementById('reset-password').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('reset-submit').click();
+        // 重置密码提交
+        document.getElementById('reset-btn').addEventListener('click', async function() {
+            const email = document.getElementById('reset-email').value;
+            const code = document.getElementById('reset-code').value;
+            const new_password = document.getElementById('reset-password').value;
+            this.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth.php`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'reset_password', email: email, code: code, new_password: new_password})
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showMessage(data.msg, 'success');
+                    setTimeout(() => switchTab('password'), 1500);
+                } else {
+                    showMessage(data.msg, 'error');
+                    this.disabled = false;
+                }
+            } catch (e) {
+                showMessage('网络错误，请重试', 'error');
+                this.disabled = false;
+            }
         });
     </script>
 </body>
