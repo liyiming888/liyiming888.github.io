@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - AI平台</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; overflow: hidden; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; color: #fff; }
+    .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+    .header p { opacity: 0.9; font-size: 14px; }
+    .tabs { display: flex; border-bottom: 1px solid #eee; }
+    .tab { flex: 1; padding: 16px; text-align: center; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; }
+    .tab.active { color: #667eea; border-bottom: 3px solid #667eea; }
+    .form-body { padding: 30px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; font-size: 14px; }
+    .form-group input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; transition: all 0.3s; }
+    .form-group input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    .code-row { display: flex; gap: 10px; }
+    .code-row input { flex: 1; }
+    .code-row button { width: 120px; white-space: nowrap; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+    .btn-secondary { background: #f5f5f5; color: #666; }
+    .btn-secondary:hover { background: #eee; }
+    .link-group { margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; }
+    .link { color: #667eea; cursor: pointer; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+    .form-panel { display: none; }
+    .form-panel.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal.active { display: flex; }
+    .modal-content { background: #fff; border-radius: 16px; width: 100%; max-width: 420px; padding: 30px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h2 { font-size: 20px; color: #333; }
+    .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+    .message { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .message.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .turnstile-container { margin-bottom: 20px; display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AI平台</h1>
+      <p>智能聊天 · AI生图 · 一站式体验</p>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="password">密码登录</div>
+      <div class="tab" data-tab="code">验证码登录</div>
+    </div>
+    <div class="form-body">
+      <div id="message"></div>
+      
+      <!-- 密码登录面板 -->
+      <div class="form-panel active" id="password-panel">
+        <div class="form-group">
+          <label>邮箱</label>
+          <input type="email" id="login-email" placeholder="请输入邮箱地址">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="login-password" placeholder="请输入密码">
+        </div>
+        <button class="btn btn-primary" id="login-password-btn">登录</button>
+        <div class="link-group">
+          <span class="link" id="register-link">注册账号</span>
+          <span class="link" id="reset-link">忘记密码</span>
+        </div>
+      </div>
+
+      <!-- 验证码登录面板 -->
+      <div class="form-panel" id="code-panel">
+        <div class="form-group">
+          <label>邮箱</label>
+          <input type="email" id="code-email" placeholder="请输入邮箱地址">
+        </div>
+        <div class="turnstile-container" id="code-turnstile"></div>
+        <div class="form-group">
+          <label>验证码</label>
+          <div class="code-row">
+            <input type="text" id="login-code" placeholder="请输入6位验证码">
+            <button class="btn btn-secondary" id="send-code-btn">获取验证码</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="login-code-btn">登录</button>
+        <div class="link-group">
+          <span class="link" id="register-link2">注册账号</span>
+          <span class="link" id="reset-link2">忘记密码</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册模态框 -->
+  <div class="modal" id="register-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>注册账号</h2>
+        <button class="close-btn" id="register-close">&times;</button>
+      </div>
+      <div id="register-message"></div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="register-email" placeholder="请输入邮箱地址">
+      </div>
+      <div class="turnstile-container" id="register-turnstile"></div>
+      <div class="form-group">
+        <label>验证码</label>
+        <div class="code-row">
+          <input type="text" id="register-code" placeholder="请输入6位验证码">
+          <button class="btn btn-secondary" id="register-send-code-btn">获取验证码</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="register-password" placeholder="请设置6-20位密码">
+      </div>
+      <button class="btn btn-primary" id="register-btn">注册</button>
+    </div>
+  </div>
+
+  <!-- 重置密码模态框 -->
+  <div class="modal" id="reset-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>重置密码</h2>
+        <button class="close-btn" id="reset-close">&times;</button>
+      </div>
+      <div id="reset-message"></div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="reset-email" placeholder="请输入邮箱地址">
+      </div>
+      <div class="turnstile-container" id="reset-turnstile"></div>
+      <div class="form-group">
+        <label>验证码</label>
+        <div class="code-row">
+          <input type="text" id="reset-code" placeholder="请输入6位验证码">
+          <button class="btn btn-secondary" id="reset-send-code-btn">获取验证码</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>新密码</label>
+        <input type="password" id="reset-password" placeholder="请设置6-20位新密码">
+      </div>
+      <button class="btn btn-primary" id="reset-btn">重置密码</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://101.32.215.93:3000/api';
+    const TURNSTILE_SITE_KEY = '0x4AAAAAACyGeLsKIbpjbRer';
+    let turnstileWidgets = {};
+
+    // 页面加载完成
+    window.onload = () => {
+      // 检查是否已登录
+      if (localStorage.getItem('token')) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // 初始化Turnstile
+      setTimeout(() => {
+        turnstileWidgets.code = turnstile.render('#code-turnstile', { sitekey: TURNSTILE_SITE_KEY });
+        turnstileWidgets.register = turnstile.render('#register-turnstile', { sitekey: TURNSTILE_SITE_KEY });
+        turnstileWidgets.reset = turnstile.render('#reset-turnstile', { sitekey: TURNSTILE_SITE_KEY });
+      }, 500);
+
+      // 标签切换
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');
+        });
+      });
+
+      // 模态框开关
+      const openModal = (id) => document.getElementById(id).classList.add('active');
+      const closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+      document.getElementById('register-link').addEventListener('click', () => openModal('register-modal'));
+      document.getElementById('register-link2').addEventListener('click', () => openModal('register-modal'));
+      document.getElementById('register-close').addEventListener('click', () => closeModal('register-modal'));
+
+      document.getElementById('reset-link').addEventListener('click', () => openModal('reset-modal'));
+      document.getElementById('reset-link2').addEventListener('click', () => openModal('reset-modal'));
+      document.getElementById('reset-close').addEventListener('click', () => closeModal('reset-modal'));
+
+      // 消息提示
+      const showMessage = (id, text, type) => {
+        const el = document.getElementById(id);
+        el.innerHTML = `<div class="message ${type}">${text}</div>`;
+        setTimeout(() => el.innerHTML = '', 3000);
+      };
+
+      // 倒计时
+      const countDown = (btn, seconds = 60) => {
+        let count = seconds;
+        btn.disabled = true;
+        btn.innerText = `${count}秒后重发`;
+        const timer = setInterval(() => {
+          count--;
+          btn.innerText = `${count}秒后重发`;
+          if (count <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.innerText = '获取验证码';
+          }
+        }, 1000);
+      };
+
+      // 发送登录验证码
+      document.getElementById('send-code-btn').addEventListener('click', async () => {
+        const email = document.getElementById('code-email').value;
+        const token = turnstile.getResponse(turnstileWidgets.code);
+        if (!email) return showMessage('message', '请输入邮箱', 'error');
+        if (!token) return showMessage('message', '请先完成人机验证', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/send-email-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, turnstileToken: token, type: 'login' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMessage('message', '验证码发送成功', 'success');
+            countDown(document.getElementById('send-code-btn'));
+            turnstile.reset(turnstileWidgets.code);
+          } else {
+            showMessage('message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 发送注册验证码
+      document.getElementById('register-send-code-btn').addEventListener('click', async () => {
+        const email = document.getElementById('register-email').value;
+        const token = turnstile.getResponse(turnstileWidgets.register);
+        if (!email) return showMessage('register-message', '请输入邮箱', 'error');
+        if (!token) return showMessage('register-message', '请先完成人机验证', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/send-email-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, turnstileToken: token, type: 'register' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMessage('register-message', '验证码发送成功', 'success');
+            countDown(document.getElementById('register-send-code-btn'));
+            turnstile.reset(turnstileWidgets.register);
+          } else {
+            showMessage('register-message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('register-message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 发送重置验证码
+      document.getElementById('reset-send-code-btn').addEventListener('click', async () => {
+        const email = document.getElementById('reset-email').value;
+        const token = turnstile.getResponse(turnstileWidgets.reset);
+        if (!email) return showMessage('reset-message', '请输入邮箱', 'error');
+        if (!token) return showMessage('reset-message', '请先完成人机验证', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/send-email-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, turnstileToken: token, type: 'reset' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMessage('reset-message', '验证码发送成功', 'success');
+            countDown(document.getElementById('reset-send-code-btn'));
+            turnstile.reset(turnstileWidgets.reset);
+          } else {
+            showMessage('reset-message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('reset-message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 密码登录
+      document.getElementById('login-password-btn').addEventListener('click', async () => {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        if (!email || !password) return showMessage('message', '请输入邮箱和密码', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/login-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem('token', data.data.token);
+            localStorage.setItem('user', JSON.stringify(data.data.user));
+            window.location.href = 'index.html';
+          } else {
+            showMessage('message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 验证码登录
+      document.getElementById('login-code-btn').addEventListener('click', async () => {
+        const email = document.getElementById('code-email').value;
+        const code = document.getElementById('login-code').value;
+        if (!email || !code) return showMessage('message', '请输入邮箱和验证码', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/login-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+          });
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem('token', data.data.token);
+            localStorage.setItem('user', JSON.stringify(data.data.user));
+            window.location.href = 'index.html';
+          } else {
+            showMessage('message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 注册
+      document.getElementById('register-btn').addEventListener('click', async () => {
+        const email = document.getElementById('register-email').value;
+        const code = document.getElementById('register-code').value;
+        const password = document.getElementById('register-password').value;
+        if (!email || !code || !password) return showMessage('register-message', '请填写完整信息', 'error');
+        if (password.length < 6) return showMessage('register-message', '密码至少6位', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, code })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMessage('register-message', '注册成功，请登录', 'success');
+            setTimeout(() => closeModal('register-modal'), 1500);
+          } else {
+            showMessage('register-message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('register-message', '网络错误，请重试', 'error');
+        }
+      });
+
+      // 重置密码
+      document.getElementById('reset-btn').addEventListener('click', async () => {
+        const email = document.getElementById('reset-email').value;
+        const code = document.getElementById('reset-code').value;
+        const newPassword = document.getElementById('reset-password').value;
+        if (!email || !code || !newPassword) return showMessage('reset-message', '请填写完整信息', 'error');
+        if (newPassword.length < 6) return showMessage('reset-message', '密码至少6位', 'error');
+
+        try {
+          const res = await fetch(`${API_BASE}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, newPassword, code })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMessage('reset-message', '密码重置成功，请登录', 'success');
+            setTimeout(() => closeModal('reset-modal'), 1500);
+          } else {
+            showMessage('reset-message', data.message, 'error');
+          }
+        } catch (err) {
+          showMessage('reset-message', '网络错误，请重试', 'error');
+        }
+      });
+    };
+  </script>
+</body>
+</html>
