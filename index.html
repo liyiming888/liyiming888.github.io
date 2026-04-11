@@ -1,441 +1,331 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>考试成绩分析报告</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#3b82f6',
-                        secondary: '#6366f1',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444',
-                        dark: '#1e293b',
-                        light: '#f8fafc'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .card-shadow {
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
-            }
-            .card-hover {
-                transition: all 0.3s ease;
-            }
-            .card-hover:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            }
-            .gradient-bg {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .download-toast {
-                transition: all 0.3s ease;
-                transform: translateY(-20px);
-                opacity: 0;
-            }
-            .download-toast.show {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>邮箱验证码验证</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/sitekey/0x4AAAAAACyGeLsKIbpjbRer"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      width: 100%;
+      max-width: 450px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #165DFF;
+      box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
+    }
+
+    .captcha-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .captcha-group input {
+      flex: 1;
+    }
+
+    .send-btn {
+      padding: 14px 20px;
+      background: #f0f2f5;
+      border: none;
+      border-radius: 8px;
+      color: #666;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s;
+    }
+
+    .send-btn:enabled:hover {
+      background: #e5e7eb;
+    }
+
+    .send-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .send-btn.active {
+      background: #165DFF;
+      color: white;
+    }
+
+    .send-btn.active:hover {
+      background: #0d47a1;
+    }
+
+    .turnstile-container {
+      margin: 24px 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: #165DFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .submit-btn:hover {
+      background: #0d47a1;
+    }
+
+    .submit-btn:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 font-sans text-gray-800 min-h-screen">
-    <!-- 顶部导航 -->
-    <nav class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <i class="fa fa-bar-chart text-primary text-2xl mr-3"></i>
-                    <h1 class="text-xl font-bold text-gray-800">考试成绩分析报告</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-gray-600 hidden sm:inline-block">生成日期: 2026年4月11日</span>
-                    <!-- 新增表格下载按钮 -->
-                    <a id="downloadBtn" href="data:text/csv;charset=utf-8,大题,满分,得分%0A一,30,15%0A二,35,21%0A三,35,27%0A总分,100,63" 
-                       download="考试成绩表格.csv"
-                       class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors duration-300 flex items-center focus:outline-none focus:ring-2 focus:ring-primary/50">
-                        <i class="fa fa-download mr-2"></i>
-                        <span class="hidden sm:inline">导出报告</span>
-                    </a>
-                    <!-- 下载成功提示 -->
-                    <div id="downloadToast" class="download-toast fixed top-20 right-4 bg-success text-white px-4 py-2 rounded-lg shadow-lg z-50">
-                        <i class="fa fa-check mr-2"></i>表格下载成功
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+<body>
+  <div class="container">
+    <h1>邮箱验证码验证</h1>
+    
+    <div class="form-group">
+      <label for="email">邮箱地址</label>
+      <input type="email" id="email" placeholder="请输入您的邮箱" required>
+    </div>
 
-    <!-- 主要内容 -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- 总体概览 -->
-        <div class="mb-10">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">总体成绩概览</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- 总分卡片 -->
-                <div class="bg-white rounded-xl p-6 card-shadow card-hover">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-gray-500 font-medium">总分</h3>
-                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <i class="fa fa-trophy text-primary"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-end">
-                        <span class="text-3xl font-bold">63</span>
-                        <span class="text-gray-500 ml-2 mb-1">/ 100</span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-primary h-2.5 rounded-full" style="width: 63%"></div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">得分率: 63%</p>
-                    </div>
-                </div>
+    <div class="form-group">
+      <label for="captcha">验证码</label>
+      <div class="captcha-group">
+        <input type="text" id="captcha" placeholder="请输入6位验证码" maxlength="6" required>
+        <button id="sendBtn" class="send-btn" disabled>发送验证码</button>
+      </div>
+    </div>
 
-                <!-- 第一题卡片 -->
-                <div class="bg-white rounded-xl p-6 card-shadow card-hover">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-gray-500 font-medium">第一题</h3>
-                        <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center">
-                            <i class="fa fa-exclamation-triangle text-danger"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-end">
-                        <span class="text-3xl font-bold">15</span>
-                        <span class="text-gray-500 ml-2 mb-1">/ 30</span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-danger h-2.5 rounded-full" style="width: 50%"></div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">得分率: 50%</p>
-                    </div>
-                </div>
+    <div class="turnstile-container">
+      <div 
+        class="cf-turnstile" 
+        data-sitekey="0x4AAAAAACyGeLsKIbpjbRer"
+        data-callback="onTurnstileSuccess"
+        data-expired-callback="onTurnstileExpired"
+      ></div>
+    </div>
 
-                <!-- 第二题卡片 -->
-                <div class="bg-white rounded-xl p-6 card-shadow card-hover">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-gray-500 font-medium">第二题</h3>
-                        <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
-                            <i class="fa fa-exclamation-circle text-warning"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-end">
-                        <span class="text-3xl font-bold">21</span>
-                        <span class="text-gray-500 ml-2 mb-1">/ 35</span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-warning h-2.5 rounded-full" style="width: 60%"></div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">得分率: 60%</p>
-                    </div>
-                </div>
+    <button id="submitBtn" class="submit-btn" disabled>验证</button>
 
-                <!-- 第三题卡片 -->
-                <div class="bg-white rounded-xl p-6 card-shadow card-hover">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-gray-500 font-medium">第三题</h3>
-                        <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                            <i class="fa fa-check-circle text-success"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-end">
-                        <span class="text-3xl font-bold">27</span>
-                        <span class="text-gray-500 ml-2 mb-1">/ 35</span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-success h-2.5 rounded-full" style="width: 77%"></div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">得分率: 77.14%</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="message" class="message"></div>
+  </div>
 
-        <!-- 图表区域 -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-            <!-- 饼状图：得分与失分比例 -->
-            <div class="bg-white rounded-xl p-6 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">总分得分与失分比例</h3>
-                <div class="h-80">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
+  <script>
+    // 后端API地址 - 替换为你的腾讯云服务器公网IP
+    const API_BASE = 'http://101.32.215.93:3000/api';
 
-            <!-- 柱状图：各题满分与得分对比 -->
-            <div class="bg-white rounded-xl p-6 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">各题满分与实际得分对比</h3>
-                <div class="h-80">
-                    <canvas id="barChart"></canvas>
-                </div>
-            </div>
-        </div>
+    const emailInput = document.getElementById('email');
+    const captchaInput = document.getElementById('captcha');
+    const sendBtn = document.getElementById('sendBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const message = document.getElementById('message');
 
-        <!-- 折线图：各题得分率趋势 -->
-        <div class="bg-white rounded-xl p-6 card-shadow mb-10">
-            <h3 class="text-lg font-semibold mb-4">各题得分率变化趋势</h3>
-            <div class="h-80">
-                <canvas id="lineChart"></canvas>
-            </div>
-        </div>
+    let turnstileToken = null;
 
-        <!-- 详细分析与建议 -->
-        <div class="bg-white rounded-xl p-6 card-shadow">
-            <h3 class="text-lg font-semibold mb-6">成绩详细分析与学习建议</h3>
-            
-            <div class="space-y-6">
-                <div>
-                    <h4 class="font-medium text-gray-800 mb-2 flex items-center">
-                        <i class="fa fa-info-circle text-primary mr-2"></i>
-                        整体表现分析
-                    </h4>
-                    <p class="text-gray-600 leading-relaxed">
-                        本次考试总分为100分，您获得了63分，整体得分率为63%。从各题得分情况来看，您的表现呈现出明显的梯度差异，第三题表现最好，第一题表现相对较弱。
-                    </p>
-                </div>
-                
-                <div>
-                    <h4 class="font-medium text-gray-800 mb-2 flex items-center">
-                        <i class="fa fa-exclamation-triangle text-danger mr-2"></i>
-                        薄弱环节分析
-                    </h4>
-                    <p class="text-gray-600 leading-relaxed">
-                        <span class="font-medium text-danger">第一题</span>是您的薄弱环节，得分率仅为50%，低于整体水平。这部分内容您需要重点复习，建议重新梳理相关知识点，多做针对性练习。
-                    </p>
-                </div>
-                
-                <div>
-                    <h4 class="font-medium text-gray-800 mb-2 flex items-center">
-                        <i class="fa fa-check-circle text-success mr-2"></i>
-                        优势环节分析
-                    </h4>
-                    <p class="text-gray-600 leading-relaxed">
-                        <span class="font-medium text-success">第三题</span>是您的优势环节，得分率达到了77.14%，明显高于整体水平。这部分内容您掌握得比较扎实，可以适当减少复习时间，将更多精力投入到薄弱环节。
-                    </p>
-                </div>
-                
-                <div>
-                    <h4 class="font-medium text-gray-800 mb-2 flex items-center">
-                        <i class="fa fa-lightbulb-o text-warning mr-2"></i>
-                        学习建议
-                    </h4>
-                    <ul class="text-gray-600 leading-relaxed space-y-2 ml-5 list-disc">
-                        <li>重点复习第一题涉及的知识点，整理错题并分析错误原因</li>
-                        <li>适当加强第二题的练习，巩固相关知识，提高解题准确率</li>
-                        <li>保持第三题的学习状态，定期回顾，避免遗忘</li>
-                        <li>制定合理的学习计划，合理分配各部分内容的学习时间</li>
-                        <li>多做模拟题，熟悉考试题型和时间分配</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </main>
+    // Cloudflare Turnstile 回调
+    window.onTurnstileSuccess = function(token) {
+      turnstileToken = token;
+      sendBtn.disabled = false;
+      sendBtn.classList.add('active');
+    };
 
-    <!-- 页脚 -->
-    <footer class="bg-white shadow-inner mt-12 py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500">
-            <p>© 2026 考试成绩分析系统 | 数据仅供参考</p>
-        </div>
-    </footer>
+    window.onTurnstileExpired = function() {
+      turnstileToken = null;
+      sendBtn.disabled = true;
+      sendBtn.classList.remove('active');
+    };
 
-    <script>
-        // 等待页面加载完成
-        document.addEventListener('DOMContentLoaded', function() {
-            // 下载功能实现
-            const downloadBtn = document.getElementById('downloadBtn');
-            const downloadToast = document.getElementById('downloadToast');
-            
-            downloadBtn.addEventListener('click', function() {
-                // 显示下载成功提示
-                downloadToast.classList.add('show');
-                
-                // 3秒后隐藏提示
-                setTimeout(() => {
-                    downloadToast.classList.remove('show');
-                }, 3000);
-            });
+    // 显示消息
+    function showMessage(text, isSuccess) {
+      message.textContent = text;
+      message.className = `message ${isSuccess ? 'success' : 'error'}`;
+      message.style.display = 'block';
+      
+      setTimeout(() => {
+        message.style.display = 'none';
+      }, 5000);
+    }
 
-            // 饼状图：得分与失分比例
-            const pieCtx = document.getElementById('pieChart').getContext('2d');
-            new Chart(pieCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['得分', '失分'],
-                    datasets: [{
-                        data: [63, 37],
-                        backgroundColor: [
-                            '#3b82f6',
-                            '#e5e7eb'
-                        ],
-                        borderWidth: 0,
-                        hoverOffset: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = Math.round((value / total) * 100);
-                                    return `${label}: ${value}分 (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
+    // 倒计时
+    function startCountdown(seconds) {
+      let remaining = seconds;
+      sendBtn.disabled = true;
+      sendBtn.textContent = `${remaining}秒后重发`;
 
-            // 柱状图：各题满分与得分对比
-            const barCtx = document.getElementById('barChart').getContext('2d');
-            new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['第一题', '第二题', '第三题'],
-                    datasets: [
-                        {
-                            label: '满分',
-                            data: [30, 35, 35],
-                            backgroundColor: '#e5e7eb',
-                            borderRadius: 6
-                        },
-                        {
-                            label: '实际得分',
-                            data: [15, 21, 27],
-                            backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-                            borderRadius: 6
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                drawBorder: false
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    },
-                    barPercentage: 0.6
-                }
-            });
+      const timer = setInterval(() => {
+        remaining--;
+        sendBtn.textContent = `${remaining}秒后重发`;
 
-            // 折线图：各题得分率趋势
-            const lineCtx = document.getElementById('lineChart').getContext('2d');
-            new Chart(lineCtx, {
-                type: 'line',
-                data: {
-                    labels: ['第一题', '第二题', '第三题'],
-                    datasets: [{
-                        label: '得分率(%)',
-                        data: [50, 60, 77.14],
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#6366f1',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `得分率: ${context.raw.toFixed(2)}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: {
-                                drawBorder: false
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
+        if (remaining <= 0) {
+          clearInterval(timer);
+          sendBtn.textContent = '发送验证码';
+          sendBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    // 发送验证码
+    sendBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      
+      if (!email) {
+        showMessage('请输入邮箱地址', false);
+        return;
+      }
+
+      if (!turnstileToken) {
+        showMessage('请先完成人机验证', false);
+        return;
+      }
+
+      try {
+        sendBtn.disabled = true;
+        sendBtn.textContent = '发送中...';
+
+        const response = await fetch(`${API_BASE}/send-captcha`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            turnstileToken
+          })
         });
-    </script>
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('验证码发送成功', true);
+          startCountdown(60);
+          submitBtn.disabled = false;
+        } else {
+          showMessage(data.message, false);
+          sendBtn.disabled = false;
+          sendBtn.textContent = '发送验证码';
+          // 重置Turnstile
+          turnstile.reset();
+        }
+      } catch (error) {
+        console.error('发送失败:', error);
+        showMessage('网络错误，请稍后再试', false);
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送验证码';
+      }
+    });
+
+    // 验证验证码
+    submitBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const captcha = captchaInput.value.trim();
+
+      if (!email || !captcha) {
+        showMessage('请填写完整信息', false);
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '验证中...';
+
+        const response = await fetch(`${API_BASE}/verify-captcha`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, captcha })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('验证成功！', true);
+          // 这里可以添加验证成功后的逻辑，比如跳转到登录成功页面
+          setTimeout(() => {
+            alert('验证成功，即将进入系统');
+          }, 1500);
+        } else {
+          showMessage(data.message, false);
+        }
+      } catch (error) {
+        console.error('验证失败:', error);
+        showMessage('网络错误，请稍后再试', false);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '验证';
+      }
+    });
+  </script>
 </body>
 </html>
