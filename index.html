@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>邮箱验证码验证</title>
+  <!-- Cloudflare Turnstile 人机验证脚本 -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/sitekey/0x4AAAAAACyGeLsKIbpjbRer"></script>
   <style>
     * {
@@ -103,6 +104,7 @@
       background: #0d47a1;
     }
 
+    /* Turnstile 验证框样式，确保可见 */
     .turnstile-container {
       margin: 24px 0;
       display: flex;
@@ -153,23 +155,35 @@
 <body>
   <div class="container">
     <h1>邮箱验证码验证</h1>
-    
+
     <div class="form-group">
       <label for="email">邮箱地址</label>
-      <input type="email" id="email" placeholder="请输入您的邮箱" required>
+      <input
+        type="email"
+        id="email"
+        placeholder="请输入您的邮箱"
+        required
+      >
     </div>
 
     <div class="form-group">
       <label for="captcha">验证码</label>
       <div class="captcha-group">
-        <input type="text" id="captcha" placeholder="请输入6位验证码" maxlength="6" required>
+        <input
+          type="text"
+          id="captcha"
+          placeholder="请输入6位验证码"
+          maxlength="6"
+          required
+        >
         <button id="sendBtn" class="send-btn" disabled>发送验证码</button>
       </div>
     </div>
 
+    <!-- Cloudflare Turnstile 人机验证组件 -->
     <div class="turnstile-container">
-      <div 
-        class="cf-turnstile" 
+      <div
+        class="cf-turnstile"
         data-sitekey="0x4AAAAAACyGeLsKIbpjbRer"
         data-callback="onTurnstileSuccess"
         data-expired-callback="onTurnstileExpired"
@@ -182,7 +196,7 @@
   </div>
 
   <script>
-    // 后端API地址 - 替换为你的腾讯云服务器公网IP
+    // 已填好你的腾讯云公网IP：101.32.215.93，无需修改
     const API_BASE = 'http://101.32.215.93:3000/api';
 
     const emailInput = document.getElementById('email');
@@ -193,31 +207,32 @@
 
     let turnstileToken = null;
 
-    // Cloudflare Turnstile 回调
-    window.onTurnstileSuccess = function(token) {
+    // Turnstile 验证成功回调：解锁发送按钮
+    window.onTurnstileSuccess = function (token) {
       turnstileToken = token;
       sendBtn.disabled = false;
       sendBtn.classList.add('active');
     };
 
-    window.onTurnstileExpired = function() {
+    // Turnstile 验证过期回调：禁用发送按钮
+    window.onTurnstileExpired = function () {
       turnstileToken = null;
       sendBtn.disabled = true;
       sendBtn.classList.remove('active');
     };
 
-    // 显示消息
+    // 显示提示消息
     function showMessage(text, isSuccess) {
       message.textContent = text;
       message.className = `message ${isSuccess ? 'success' : 'error'}`;
       message.style.display = 'block';
-      
+
       setTimeout(() => {
         message.style.display = 'none';
       }, 5000);
     }
 
-    // 倒计时
+    // 60秒倒计时
     function startCountdown(seconds) {
       let remaining = seconds;
       sendBtn.disabled = true;
@@ -231,14 +246,15 @@
           clearInterval(timer);
           sendBtn.textContent = '发送验证码';
           sendBtn.disabled = false;
+          sendBtn.classList.add('active');
         }
       }, 1000);
     }
 
-    // 发送验证码
+    // 发送验证码接口
     sendBtn.addEventListener('click', async () => {
       const email = emailInput.value.trim();
-      
+
       if (!email) {
         showMessage('请输入邮箱地址', false);
         return;
@@ -255,9 +271,7 @@
 
         const response = await fetch(`${API_BASE}/send-captcha`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email,
             turnstileToken
@@ -267,31 +281,31 @@
         const data = await response.json();
 
         if (data.success) {
-          showMessage('验证码发送成功', true);
+          showMessage('验证码发送成功，请查收邮件', true);
           startCountdown(60);
           submitBtn.disabled = false;
         } else {
-          showMessage(data.message, false);
+          showMessage(data.message || '发送失败，请重试', false);
           sendBtn.disabled = false;
           sendBtn.textContent = '发送验证码';
-          // 重置Turnstile
-          turnstile.reset();
+          // 重置Turnstile验证
+          if (window.turnstile) turnstile.reset();
         }
-      } catch (error) {
-        console.error('发送失败:', error);
-        showMessage('网络错误，请稍后再试', false);
+      } catch (err) {
+        console.error('发送错误:', err);
+        showMessage('网络错误，请检查服务器状态', false);
         sendBtn.disabled = false;
         sendBtn.textContent = '发送验证码';
       }
     });
 
-    // 验证验证码
+    // 验证验证码接口
     submitBtn.addEventListener('click', async () => {
       const email = emailInput.value.trim();
       const captcha = captchaInput.value.trim();
 
       if (!email || !captcha) {
-        showMessage('请填写完整信息', false);
+        showMessage('请输入邮箱和验证码', false);
         return;
       }
 
@@ -301,25 +315,22 @@
 
         const response = await fetch(`${API_BASE}/verify-captcha`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, captcha })
         });
 
         const data = await response.json();
 
         if (data.success) {
-          showMessage('验证成功！', true);
-          // 这里可以添加验证成功后的逻辑，比如跳转到登录成功页面
+          showMessage('✅ 验证成功！', true);
           setTimeout(() => {
-            alert('验证成功，即将进入系统');
-          }, 1500);
+            alert('验证成功，可进入系统');
+          }, 1000);
         } else {
-          showMessage(data.message, false);
+          showMessage(data.message || '验证失败，请检查验证码', false);
         }
-      } catch (error) {
-        console.error('验证失败:', error);
+      } catch (err) {
+        console.error('验证错误:', err);
         showMessage('网络错误，请稍后再试', false);
       } finally {
         submitBtn.disabled = false;
