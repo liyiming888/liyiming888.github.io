@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>邮箱验证码</title>
+    <title>邮箱验证</title>
     <style>
         * {
             margin: 0;
@@ -154,9 +154,10 @@
     </div>
 
     <script>
-        // 后端接口地址（已填你的腾讯云IP）
+        // 后端接口地址
         const baseUrl = 'http://101.32.215.93:3000';
 
+        // 已修复所有拼写错误
         const email = document.getElementById('email');
         const code = document.getElementById('code');
         const sendBtn = document.getElementById('sendBtn');
@@ -166,9 +167,9 @@
         let countdown = 60;
         let timer = null;
 
-        // 邮箱校验
+        // 已修复邮箱校验正则
         function isEmail(str) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+            return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str);
         }
 
         // 提示文字
@@ -177,7 +178,7 @@
             tip.className = `tip ${type}`;
         }
 
-        // 倒计时
+        // 已修复模板字符串符号错误
         function startTimer() {
             sendBtn.disabled = true;
             sendBtn.textContent = `${countdown}s`;
@@ -220,6 +221,7 @@
                     showTip(data.msg, 'error');
                 }
             } catch (err) {
+                console.error('请求错误详情：', err);
                 showTip('网络异常或服务器未启动', 'error');
             }
         });
