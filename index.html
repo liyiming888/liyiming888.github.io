@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>邮箱验证</title>
-    <!-- Cloudflare Turnstile 官方脚本（同步加载，确保优先渲染） -->
+    <!-- Cloudflare Turnstile 官方脚本（同步加载，确保渲染正常） -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
     <style>
         * {
@@ -16,39 +16,39 @@
 
         body {
             min-height: 100vh;
-            background: #f0f2f5;
+            background: #f5f7fa;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
 
-        .box {
+        .card {
             width: 100%;
             max-width: 400px;
             background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            padding: 35px 25px;
         }
 
         .title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 600;
             color: #1d2129;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
-        .sub-title {
+        .desc {
             text-align: center;
             color: #86909c;
             font-size: 14px;
-            margin-bottom: 35px;
+            margin-bottom: 30px;
         }
 
         .form-item {
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
 
         .form-item label {
@@ -58,48 +58,40 @@
             margin-bottom: 8px;
         }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            flex-direction: column;
-        }
-
         input {
             width: 100%;
-            height: 46px;
+            height: 44px;
             border: 1px solid #e5e6eb;
-            border-radius: 8px;
-            padding: 0 14px;
+            border-radius: 6px;
+            padding: 0 12px;
             font-size: 15px;
             outline: none;
             transition: all 0.2s;
         }
 
         input:focus {
-            border-color: #5677fc;
-            box-shadow: 0 0 0 2px rgba(86, 119, 252, 0.15);
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
         }
 
-        /* Turnstile 人机验证容器 */
-        .cf-turnstile {
-            margin: 8px 0;
-            border-radius: 8px;
-            overflow: hidden;
-            width: 100%;
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         .code-btn {
-            white-space: nowrap;
+            flex-shrink: 0;
+            height: 44px;
             padding: 0 16px;
-            height: 46px;
             border: none;
-            border-radius: 8px;
-            background: #5677fc;
+            border-radius: 6px;
+            background: #1890ff;
             color: #fff;
             font-size: 14px;
             cursor: pointer;
             transition: all 0.2s;
-            width: 100%;
+            white-space: nowrap;
         }
 
         .code-btn:disabled {
@@ -108,24 +100,14 @@
         }
 
         .code-btn:hover:not(:disabled) {
-            background: #4668e6;
+            background: #096dd9;
         }
 
-        .submit-btn {
+        .cf-turnstile {
+            margin: 8px 0;
+            border-radius: 6px;
+            overflow: hidden;
             width: 100%;
-            height: 48px;
-            border: none;
-            border-radius: 8px;
-            background: #5677fc;
-            color: #fff;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .submit-btn:hover {
-            background: #4668e6;
         }
 
         .tip {
@@ -141,26 +123,55 @@
         .tip.success {
             color: #00b42a;
         }
+
+        .submit-btn {
+            width: 100%;
+            height: 46px;
+            border: none;
+            border-radius: 6px;
+            background: #1890ff;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            background: #096dd9;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 400px) {
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .code-btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="box">
+    <div class="card">
         <div class="title">邮箱验证</div>
-        <div class="sub-title">先完成人机验证，再获取邮箱验证码</div>
+        <div class="desc">完成人机验证后获取邮箱验证码</div>
 
         <div class="form-item">
             <label>邮箱地址</label>
-            <input type="email" id="email" placeholder="请输入您的邮箱">
+            <input type="email" id="email" placeholder="请输入您的邮箱地址">
         </div>
 
-        <!-- Cloudflare Turnstile 人机验证（已填入正确Site Key） -->
+        <!-- Cloudflare Turnstile 人机验证（已填入正确的Site Key） -->
         <div class="form-item">
             <div 
                 class="cf-turnstile" 
                 data-sitekey="0x4AAAAAACyGeLsKIbpjbRer"
-                data-callback="onTurnstileSuccess"
-                data-expired-callback="onTurnstileExpired"
-                data-error-callback="onTurnstileError"
+                data-callback="onVerifySuccess"
+                data-expired-callback="onVerifyExpire"
+                data-error-callback="onVerifyError"
                 data-theme="light"
                 data-size="normal"
             ></div>
@@ -168,174 +179,172 @@
 
         <div class="form-item">
             <div class="input-group">
+                <input type="text" id="verifyCode" placeholder="请输入6位验证码" maxlength="6">
                 <button class="code-btn" id="sendBtn" disabled>请先完成人机验证</button>
             </div>
             <div class="tip" id="tip"></div>
         </div>
 
-        <div class="form-item">
-            <label>验证码</label>
-            <input type="text" id="code" placeholder="请输入6位数字验证码" maxlength="6">
-        </div>
-
-        <button class="submit-btn" id="submit">提交验证</button>
+        <button class="submit-btn" id="submitBtn">提交验证</button>
     </div>
 
     <script>
-        // 后端接口地址
-        const baseUrl = 'http://101.32.215.93:3000';
-        // 人机验证token存储
-        let turnstileToken = '';
+        // 已修改为你的HTTPS接口地址，无需再修改
+        const API_BASE = 'https://api.liwz.top';
 
-        // 页面元素
-        const email = document.getElementById('email');
-        const code = document.getElementById('code');
-        const sendBtn = document.getElementById('sendBtn');
-        const submit = document.getElementById('submit');
-        const tip = document.getElementById('tip');
-
+        // 全局变量
+        let verifyToken = '';
         let countdown = 60;
         let timer = null;
 
-        // ========== Turnstile 回调函数 ==========
+        // 页面元素
+        const emailInput = document.getElementById('email');
+        const sendBtn = document.getElementById('sendBtn');
+        const verifyCodeInput = document.getElementById('verifyCode');
+        const submitBtn = document.getElementById('submitBtn');
+        const tipDom = document.getElementById('tip');
+
+        // ========== Turnstile 人机验证回调函数 ==========
         // 验证成功回调
-        window.onTurnstileSuccess = function(token) {
-            turnstileToken = token;
+        window.onVerifySuccess = function(token) {
+            verifyToken = token;
             sendBtn.disabled = false;
             sendBtn.textContent = '获取验证码';
-            showTip('人机验证通过，可获取验证码', 'success');
+            setTip('人机验证通过，可获取验证码', 'success');
             console.log('人机验证成功，token：', token);
         }
 
         // 验证过期回调
-        window.onTurnstileExpired = function() {
-            turnstileToken = '';
+        window.onVerifyExpire = function() {
+            verifyToken = '';
             sendBtn.disabled = true;
             sendBtn.textContent = '请先完成人机验证';
-            showTip('人机验证已过期，请重新验证', 'error');
+            setTip('验证已过期，请重新完成人机验证', 'error');
         }
 
         // 验证失败回调
-        window.onTurnstileError = function() {
-            turnstileToken = '';
+        window.onVerifyError = function() {
+            verifyToken = '';
             sendBtn.disabled = true;
             sendBtn.textContent = '请先完成人机验证';
-            showTip('人机验证失败，请重试', 'error');
+            setTip('人机验证失败，请刷新页面重试', 'error');
         }
 
-        // ========== 核心功能函数 ==========
+        // ========== 核心工具函数 ==========
         // 邮箱格式校验
         function isEmail(str) {
             return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str);
         }
 
-        // 提示文字
-        function showTip(text, type) {
-            tip.textContent = text;
-            tip.className = `tip ${type}`;
+        // 提示信息设置
+        function setTip(text, type) {
+            tipDom.textContent = text;
+            tipDom.className = `tip ${type}`;
         }
 
-        // 倒计时
-        function startTimer() {
+        // 倒计时功能
+        function startCountdown() {
             sendBtn.disabled = true;
-            sendBtn.textContent = `${countdown}s 后重新获取`;
+            sendBtn.textContent = `${countdown}s后重发`;
             timer = setInterval(() => {
                 countdown--;
-                sendBtn.textContent = `${countdown}s 后重新获取`;
+                sendBtn.textContent = `${countdown}s后重发`;
                 if (countdown <= 0) {
                     clearInterval(timer);
-                    // 重置倒计时和人机验证
                     countdown = 60;
-                    turnstileToken = '';
-                    sendBtn.disabled = true;
-                    sendBtn.textContent = '请先完成人机验证';
-                    // 重置Turnstile组件
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = '获取验证码';
+                    // 重置人机验证
                     turnstile.reset();
+                    verifyToken = '';
                 }
             }, 1000);
         }
 
         // ========== 事件绑定 ==========
-        // 发送验证码（强制校验人机token）
+        // 发送验证码按钮点击事件
         sendBtn.addEventListener('click', async () => {
-            const val = email.value.trim();
-            
+            const email = emailInput.value.trim();
             // 基础校验
-            if (!val) {
-                showTip('请输入邮箱', 'error');
+            if (!email) {
+                setTip('请输入邮箱地址', 'error');
                 return;
             }
-            if (!isEmail(val)) {
-                showTip('邮箱格式不正确', 'error');
+            if (!isEmail(email)) {
+                setTip('请输入正确的邮箱格式', 'error');
                 return;
             }
-            // 核心：人机验证校验
-            if (!turnstileToken) {
-                showTip('请先完成人机验证', 'error');
+            if (!verifyToken) {
+                setTip('请先完成人机验证', 'error');
                 return;
             }
 
+            // 按钮置灰，防止重复点击
+            sendBtn.disabled = true;
+            setTip('正在发送验证码...', '');
+
             try {
-                const res = await fetch(`${baseUrl}/api/send-code`, {
+                // 调用后端接口
+                const res = await fetch(`${API_BASE}/api/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // 把邮箱和人机token一起传给后端
-                    body: JSON.stringify({ 
-                        email: val,
-                        turnstileToken: turnstileToken
+                    body: JSON.stringify({
+                        email: email,
+                        turnstileToken: verifyToken
                     })
                 });
                 const data = await res.json();
 
                 if (data.code === 0) {
-                    showTip(data.msg, 'success');
-                    startTimer();
+                    setTip(data.msg, 'success');
+                    startCountdown();
                 } else {
-                    showTip(data.msg, 'error');
-                    // 失败后重置人机验证
-                    turnstile.reset();
-                    turnstileToken = '';
-                    sendBtn.disabled = true;
-                    sendBtn.textContent = '请先完成人机验证';
+                    setTip(data.msg, 'error');
+                    sendBtn.disabled = false;
                 }
             } catch (err) {
                 console.error('请求错误详情：', err);
-                showTip('网络异常或服务器未启动', 'error');
+                setTip('网络请求失败，请检查页面地址是否为HTTPS', 'error');
+                sendBtn.disabled = false;
             }
         });
 
-        // 提交验证码校验
-        submit.addEventListener('click', async () => {
-            const e = email.value.trim();
-            const c = code.value.trim();
+        // 提交验证按钮点击事件
+        submitBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const code = verifyCodeInput.value.trim();
 
-            if (!e || !c) {
-                showTip('邮箱和验证码不能为空', 'error');
+            if (!email || !code) {
+                setTip('请输入邮箱和验证码', 'error');
+                return;
+            }
+            if (code.length !== 6) {
+                setTip('请输入6位数字验证码', 'error');
                 return;
             }
 
             try {
-                const res = await fetch(`${baseUrl}/api/verify-code`, {
+                const res = await fetch(`${API_BASE}/api/verify-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: e, code: c })
+                    body: JSON.stringify({ email, code })
                 });
                 const data = await res.json();
 
                 if (data.code === 0) {
-                    showTip(data.msg, 'success');
+                    setTip(data.msg, 'success');
                     alert('验证成功！');
                 } else {
-                    showTip(data.msg, 'error');
+                    setTip(data.msg, 'error');
                 }
             } catch (err) {
-                showTip('请求失败', 'error');
+                setTip('请求失败，请刷新页面重试', 'error');
             }
         });
 
-        // 输入框聚焦清除提示
-        email.addEventListener('focus', () => showTip(''));
-        code.addEventListener('focus', () => showTip(''));
+        // 输入框聚焦清除错误提示
+        emailInput.addEventListener('focus', () => setTip(''));
+        verifyCodeInput.addEventListener('focus', () => setTip(''));
     </script>
 </body>
 </html>
