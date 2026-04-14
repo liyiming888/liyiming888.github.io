@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>邮箱验证</title>
+    <!-- 引入Cloudflare Turnstile官方脚本 -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         * {
             margin: 0;
@@ -59,6 +61,7 @@
         .input-group {
             display: flex;
             gap: 10px;
+            flex-direction: column;
         }
 
         input {
@@ -77,6 +80,13 @@
             box-shadow: 0 0 0 2px rgba(86, 119, 252, 0.15);
         }
 
+        /* Turnstile 组件容器样式 */
+        .cf-turnstile {
+            margin: 8px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
         .code-btn {
             white-space: nowrap;
             padding: 0 16px;
@@ -88,6 +98,7 @@
             font-size: 14px;
             cursor: pointer;
             transition: all 0.2s;
+            width: 100%;
         }
 
         .code-btn:disabled {
@@ -134,13 +145,28 @@
 <body>
     <div class="box">
         <div class="title">邮箱验证</div>
-        <div class="sub-title">输入邮箱，获取6位数字验证码</div>
+        <div class="sub-title">先完成人机验证，再获取邮箱验证码</div>
 
         <div class="form-item">
             <label>邮箱地址</label>
+            <input type="email" id="email" placeholder="请输入您的邮箱">
+        </div>
+
+        <!-- Cloudflare Turnstile 人机验证组件 -->
+        <div class="form-item">
+            <div 
+                class="cf-turnstile" 
+                data-sitekey="0x4AAAAAAACyGeLsKIbpjbRer"
+                data-callback="onTurnstileSuccess"
+                data-expired-callback="onTurnstileExpired"
+                data-error-callback="onTurnstileError"
+                data-theme="light"
+            ></div>
+        </div>
+
+        <div class="form-item">
             <div class="input-group">
-                <input type="email" id="email" placeholder="请输入您的邮箱">
-                <button class="code-btn" id="sendBtn">获取验证码</button>
+                <button class="code-btn" id="sendBtn" disabled>请先完成人机验证</button>
             </div>
             <div class="tip" id="tip"></div>
         </div>
@@ -156,8 +182,10 @@
     <script>
         // 后端接口地址
         const baseUrl = 'http://101.32.215.93:3000';
+        // 人机验证token存储
+        let turnstileToken = '';
 
-        // 已修复所有拼写错误
+        // 页面元素
         const email = document.getElementById('email');
         const code = document.getElementById('code');
         const sendBtn = document.getElementById('sendBtn');
@@ -167,7 +195,33 @@
         let countdown = 60;
         let timer = null;
 
-        // 已修复邮箱校验正则
+        // ========== Turnstile 回调函数 ==========
+        // 验证成功回调
+        window.onTurnstileSuccess = function(token) {
+            turnstileToken = token;
+            sendBtn.disabled = false;
+            sendBtn.textContent = '获取验证码';
+            showTip('人机验证通过，可获取验证码', 'success');
+        }
+
+        // 验证过期回调
+        window.onTurnstileExpired = function() {
+            turnstileToken = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = '请先完成人机验证';
+            showTip('人机验证已过期，请重新验证', 'error');
+        }
+
+        // 验证失败回调
+        window.onTurnstileError = function() {
+            turnstileToken = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = '请先完成人机验证';
+            showTip('人机验证失败，请重试', 'error');
+        }
+
+        // ========== 核心功能函数 ==========
+        // 邮箱格式校验
         function isEmail(str) {
             return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str);
         }
@@ -178,25 +232,32 @@
             tip.className = `tip ${type}`;
         }
 
-        // 已修复模板字符串符号错误
+        // 倒计时
         function startTimer() {
             sendBtn.disabled = true;
-            sendBtn.textContent = `${countdown}s`;
+            sendBtn.textContent = `${countdown}s 后重新获取`;
             timer = setInterval(() => {
                 countdown--;
-                sendBtn.textContent = `${countdown}s`;
+                sendBtn.textContent = `${countdown}s 后重新获取`;
                 if (countdown <= 0) {
                     clearInterval(timer);
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = '获取验证码';
+                    // 重置倒计时和人机验证
                     countdown = 60;
+                    turnstileToken = '';
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = '请先完成人机验证';
+                    // 重置Turnstile组件
+                    turnstile.reset();
                 }
             }, 1000);
         }
 
-        // 发送验证码
+        // ========== 事件绑定 ==========
+        // 发送验证码（强制校验人机token）
         sendBtn.addEventListener('click', async () => {
             const val = email.value.trim();
+            
+            // 基础校验
             if (!val) {
                 showTip('请输入邮箱', 'error');
                 return;
@@ -205,12 +266,21 @@
                 showTip('邮箱格式不正确', 'error');
                 return;
             }
+            // 核心：人机验证校验
+            if (!turnstileToken) {
+                showTip('请先完成人机验证', 'error');
+                return;
+            }
 
             try {
                 const res = await fetch(`${baseUrl}/api/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: val })
+                    // 把邮箱和人机token一起传给后端
+                    body: JSON.stringify({ 
+                        email: val,
+                        turnstileToken: turnstileToken
+                    })
                 });
                 const data = await res.json();
 
@@ -219,6 +289,11 @@
                     startTimer();
                 } else {
                     showTip(data.msg, 'error');
+                    // 失败后重置人机验证
+                    turnstile.reset();
+                    turnstileToken = '';
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = '请先完成人机验证';
                 }
             } catch (err) {
                 console.error('请求错误详情：', err);
@@ -226,7 +301,7 @@
             }
         });
 
-        // 提交验证
+        // 提交验证码校验
         submit.addEventListener('click', async () => {
             const e = email.value.trim();
             const c = code.value.trim();
@@ -254,6 +329,10 @@
                 showTip('请求失败', 'error');
             }
         });
+
+        // 邮箱输入时清除提示
+        email.addEventListener('focus', () => showTip(''));
+        code.addEventListener('focus', () => showTip(''));
     </script>
 </body>
 </html>
