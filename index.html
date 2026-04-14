@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>邮箱验证码获取</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #333333;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .desc {
+      font-size: 14px;
+      color: #999999;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .input-group {
+      margin-bottom: 30px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 14px;
+      color: #333333;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .email-input {
+      flex: 1;
+      height: 50px;
+      padding: 0 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #333333;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .email-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .email-input.error {
+      border-color: #ef4444;
+    }
+
+    .code-btn {
+      flex-shrink: 0;
+      height: 50px;
+      padding: 0 20px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .code-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .code-btn:disabled {
+      background: #e5e7eb;
+      color: #999999;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .tip-text {
+      margin-top: 8px;
+      font-size: 12px;
+      height: 16px;
+    }
+
+    .tip-text.error {
+      color: #ef4444;
+    }
+
+    .tip-text.success {
+      color: #10b981;
+    }
+
+    .verify-input-group {
+      margin-bottom: 40px;
+    }
+
+    .verify-input {
+      width: 100%;
+      height: 50px;
+      padding: 0 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #333333;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .verify-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 32px 24px;
+      }
+
+      .title {
+        font-size: 24px;
+      }
+
+      .input-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .code-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="title">邮箱验证</h1>
+    <p class="desc">请输入您的邮箱地址，获取验证码</p>
+
+    <div class="input-group">
+      <label class="input-label">邮箱地址</label>
+      <div class="input-wrapper">
+        <input 
+          type="email" 
+          class="email-input" 
+          id="emailInput" 
+          placeholder="请输入您的邮箱"
+        >
+        <button class="code-btn" id="codeBtn">获取验证码</button>
+      </div>
+      <p class="tip-text" id="tipText"></p>
+    </div>
+
+    <div class="verify-input-group">
+      <label class="input-label">验证码</label>
+      <input 
+        type="text" 
+        class="verify-input" 
+        id="verifyInput" 
+        placeholder="请输入6位数字验证码"
+        maxlength="6"
+      >
+    </div>
+
+    <button class="submit-btn" id="submitBtn">提交验证</button>
+  </div>
+
+  <script>
+    // ！！！这里替换成你的腾讯云服务器公网IP接口地址
+    const API_BASE_URL = 'http://你的服务器公网IP:3000';
+
+    const emailInput = document.getElementById('emailInput');
+    const codeBtn = document.getElementById('codeBtn');
+    const tipText = document.getElementById('tipText');
+    const verifyInput = document.getElementById('verifyInput');
+    const submitBtn = document.getElementById('submitBtn');
+    let countdown = 60;
+    let timer = null;
+
+    // 邮箱格式校验
+    function validateEmail(email) {
+      const reg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return reg.test(email);
+    }
+
+    // 提示信息设置
+    function setTip(text, type = '') {
+      tipText.textContent = text;
+      tipText.className = `tip-text ${type}`;
+    }
+
+    // 倒计时功能
+    function startCountdown() {
+      codeBtn.disabled = true;
+      codeBtn.textContent = `${countdown}秒后重新获取`;
+      
+      timer = setInterval(() => {
+        countdown--;
+        codeBtn.textContent = `${countdown}秒后重新获取`;
+        
+        if (countdown <= 0) {
+          clearInterval(timer);
+          codeBtn.disabled = false;
+          codeBtn.textContent = '获取验证码';
+          countdown = 60;
+        }
+      }, 1000);
+    }
+
+    // 获取验证码点击事件
+    codeBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      
+      // 校验邮箱
+      if (!email) {
+        setTip('请输入邮箱地址', 'error');
+        return;
+      }
+      if (!validateEmail(email)) {
+        setTip('请输入有效的邮箱地址', 'error');
+        return;
+      }
+
+      setTip('', '');
+      codeBtn.disabled = true;
+
+      try {
+        // 调用后端接口发送验证码
+        const response = await fetch(`${API_BASE_URL}/api/send-code`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 0) {
+          setTip(result.msg, 'success');
+          startCountdown();
+        } else {
+          setTip(result.msg, 'error');
+          codeBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error('请求失败：', error);
+        setTip('网络错误，请检查接口地址和服务状态', 'error');
+        codeBtn.disabled = false;
+      }
+    });
+
+    // 提交验证点击事件
+    submitBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const code = verifyInput.value.trim();
+
+      if (!email) {
+        setTip('请输入邮箱地址', 'error');
+        return;
+      }
+      if (!code || code.length !== 6) {
+        setTip('请输入6位数字验证码', 'error');
+        return;
+      }
+
+      setTip('', '');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/verify-code`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, code })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 0) {
+          setTip(result.msg, 'success');
+          alert('验证成功！');
+          // 验证成功后的后续操作，比如跳转页面、提交表单等
+        } else {
+          setTip(result.msg, 'error');
+        }
+      } catch (error) {
+        console.error('请求失败：', error);
+        setTip('网络错误，请检查接口地址和服务状态', 'error');
+      }
+    });
+
+    // 输入框聚焦清除错误提示
+    emailInput.addEventListener('focus', () => setTip(''));
+    verifyInput.addEventListener('focus', () => setTip(''));
+  </script>
+</body>
+</html>
