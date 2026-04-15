@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>邮箱验证</title>
-    <!-- Cloudflare Turnstile 官方脚本（同步加载，确保渲染正常） -->
+    <!-- Cloudflare Turnstile 官方脚本（强制同步加载，避免初始化失败） -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
     <style>
         * {
@@ -78,10 +78,11 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-direction: column;
         }
 
         .code-btn {
-            flex-shrink: 0;
+            width: 100%;
             height: 44px;
             padding: 0 16px;
             border: none;
@@ -141,17 +142,6 @@
         .submit-btn:hover {
             background: #096dd9;
         }
-
-        /* 移动端适配 */
-        @media (max-width: 400px) {
-            .input-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .code-btn {
-                width: 100%;
-            }
-        }
     </style>
 </head>
 <body>
@@ -164,7 +154,7 @@
             <input type="email" id="email" placeholder="请输入您的邮箱地址">
         </div>
 
-        <!-- Cloudflare Turnstile 人机验证（已填入正确的Site Key） -->
+        <!-- 已填入你的正确Site Key -->
         <div class="form-item">
             <div 
                 class="cf-turnstile" 
@@ -189,7 +179,7 @@
     </div>
 
     <script>
-        // 已修改为你的HTTPS接口地址，无需再修改
+        // 你的HTTPS接口地址，和Cloudflare配置完全匹配
         const API_BASE = 'https://api.liwz.top';
 
         // 全局变量
@@ -204,14 +194,14 @@
         const submitBtn = document.getElementById('submitBtn');
         const tipDom = document.getElementById('tip');
 
-        // ========== Turnstile 人机验证回调函数 ==========
+        // ========== Turnstile 人机验证回调（修复所有逻辑） ==========
         // 验证成功回调
         window.onVerifySuccess = function(token) {
             verifyToken = token;
             sendBtn.disabled = false;
             sendBtn.textContent = '获取验证码';
             setTip('人机验证通过，可获取验证码', 'success');
-            console.log('人机验证成功，token：', token);
+            console.log('✅ 人机验证成功，token：', token);
         }
 
         // 验证过期回调
@@ -220,14 +210,16 @@
             sendBtn.disabled = true;
             sendBtn.textContent = '请先完成人机验证';
             setTip('验证已过期，请重新完成人机验证', 'error');
+            console.log('⚠️ 人机验证已过期');
         }
 
         // 验证失败回调
-        window.onVerifyError = function() {
+        window.onVerifyError = function(error) {
             verifyToken = '';
             sendBtn.disabled = true;
             sendBtn.textContent = '请先完成人机验证';
             setTip('人机验证失败，请刷新页面重试', 'error');
+            console.error('❌ 人机验证失败：', error);
         }
 
         // ========== 核心工具函数 ==========
@@ -294,6 +286,7 @@
                     })
                 });
                 const data = await res.json();
+                console.log('后端返回结果：', data);
 
                 if (data.code === 0) {
                     setTip(data.msg, 'success');
@@ -301,10 +294,13 @@
                 } else {
                     setTip(data.msg, 'error');
                     sendBtn.disabled = false;
+                    // 验证失败重置人机验证
+                    turnstile.reset();
+                    verifyToken = '';
                 }
             } catch (err) {
                 console.error('请求错误详情：', err);
-                setTip('网络请求失败，请检查页面地址是否为HTTPS', 'error');
+                setTip('网络请求失败，请确认页面为HTTPS访问', 'error');
                 sendBtn.disabled = false;
             }
         });
