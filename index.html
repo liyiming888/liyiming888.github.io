@@ -1,346 +1,432 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>邮箱验证</title>
-    <!-- Cloudflare Turnstile 官方脚本（强制同步加载，避免初始化失败） -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>邮箱验证码 | 简洁版</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            min-height: 100vh;
-            background: #f5f7fa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
 
-        .card {
-            width: 100%;
-            max-width: 400px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-            padding: 35px 25px;
-        }
+    .container {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      animation: fadeIn 0.5s ease-out;
+    }
 
-        .title {
-            font-size: 22px;
-            font-weight: 600;
-            color: #1d2129;
-            text-align: center;
-            margin-bottom: 8px;
-        }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-        .desc {
-            text-align: center;
-            color: #86909c;
-            font-size: 14px;
-            margin-bottom: 30px;
-        }
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
 
-        .form-item {
-            margin-bottom: 22px;
-        }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
 
-        .form-item label {
-            display: block;
-            font-size: 14px;
-            color: #4e5969;
-            margin-bottom: 8px;
-        }
+    .input-group {
+      margin-bottom: 20px;
+    }
 
-        input {
-            width: 100%;
-            height: 44px;
-            border: 1px solid #e5e6eb;
-            border-radius: 6px;
-            padding: 0 12px;
-            font-size: 15px;
-            outline: none;
-            transition: all 0.2s;
-        }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    }
 
-        input:focus {
-            border-color: #1890ff;
-            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
-        }
+    .email-input-wrapper {
+      display: flex;
+      gap: 10px;
+    }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-direction: column;
-        }
+    input {
+      flex: 1;
+      padding: 14px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      outline: none;
+    }
 
-        .code-btn {
-            width: 100%;
-            height: 44px;
-            padding: 0 16px;
-            border: none;
-            border-radius: 6px;
-            background: #1890ff;
-            color: #fff;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
+    input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
-        .code-btn:disabled {
-            background: #c9cdd4;
-            cursor: not-allowed;
-        }
+    input.error {
+      border-color: #ff4757;
+    }
 
-        .code-btn:hover:not(:disabled) {
-            background: #096dd9;
-        }
+    .code-input-wrapper input {
+      text-align: center;
+      letter-spacing: 8px;
+      font-size: 24px;
+      font-weight: 600;
+    }
 
-        .cf-turnstile {
-            margin: 8px 0;
-            border-radius: 6px;
-            overflow: hidden;
-            width: 100%;
-        }
+    button {
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
 
-        .tip {
-            margin-top: 6px;
-            font-size: 12px;
-            min-height: 16px;
-        }
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
 
-        .tip.error {
-            color: #f53f3f;
-        }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #ccc;
+    }
 
-        .tip.success {
-            color: #00b42a;
-        }
+    .verify-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 16px;
+    }
 
-        .submit-btn {
-            width: 100%;
-            height: 46px;
-            border: none;
-            border-radius: 6px;
-            background: #1890ff;
-            color: #fff;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 10px;
-        }
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
 
-        .submit-btn:hover {
-            background: #096dd9;
-        }
-    </style>
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+      display: block;
+    }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .step {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e0e0e0;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .step.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .step.completed {
+      background: #00b894;
+      color: white;
+    }
+
+    .step-line {
+      width: 60px;
+      height: 2px;
+      background: #e0e0e0;
+      margin: 0 8px;
+    }
+
+    .step-line.completed {
+      background: #00b894;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div class="card">
-        <div class="title">邮箱验证</div>
-        <div class="desc">完成人机验证后获取邮箱验证码</div>
+  <div class="container">
+    <h2>📧 邮箱验证</h2>
+    <p class="subtitle">请输入您的邮箱，获取验证码</p>
 
-        <div class="form-item">
-            <label>邮箱地址</label>
-            <input type="email" id="email" placeholder="请输入您的邮箱地址">
-        </div>
-
-        <!-- 已填入你的正确Site Key -->
-        <div class="form-item">
-            <div 
-                class="cf-turnstile" 
-                data-sitekey="0x4AAAAAACyGeLsKIbpjbRer"
-                data-callback="onVerifySuccess"
-                data-expired-callback="onVerifyExpire"
-                data-error-callback="onVerifyError"
-                data-theme="light"
-                data-size="normal"
-            ></div>
-        </div>
-
-        <div class="form-item">
-            <div class="input-group">
-                <input type="text" id="verifyCode" placeholder="请输入6位验证码" maxlength="6">
-                <button class="code-btn" id="sendBtn" disabled>请先完成人机验证</button>
-            </div>
-            <div class="tip" id="tip"></div>
-        </div>
-
-        <button class="submit-btn" id="submitBtn">提交验证</button>
+    <!-- 步骤指示器 -->
+    <div class="step-indicator">
+      <span class="step" id="step1">1</span>
+      <span class="step-line" id="line"></span>
+      <span class="step" id="step2">2</span>
     </div>
 
-    <script>
-        // 你的HTTPS接口地址，和Cloudflare配置完全匹配
-        const API_BASE = 'https://api.liwz.top';
+    <!-- 第一步：输入邮箱 -->
+    <div id="emailStep">
+      <div class="input-group">
+        <label>邮箱地址</label>
+        <div class="email-input-wrapper">
+          <input type="email" id="emailInput" placeholder="example@domain.com" autocomplete="off">
+          <button id="sendCodeBtn" onclick="sendVerificationCode()">发送验证码</button>
+        </div>
+      </div>
+    </div>
 
-        // 全局变量
-        let verifyToken = '';
-        let countdown = 60;
-        let timer = null;
+    <!-- 第二步：输入验证码 -->
+    <div id="codeStep" class="hidden">
+      <div class="input-group">
+        <label>验证码</label>
+        <div class="code-input-wrapper">
+          <input type="text" id="codeInput" placeholder="6位验证码" maxlength="6" autocomplete="off">
+        </div>
+        <p style="font-size: 13px; color: #666; margin-top: 8px;">
+          验证码已发送至 <strong id="sentEmailDisplay"></strong><br>
+          <span id="countdownText">60秒后可重新发送</span>
+        </p>
+      </div>
+      <button class="verify-btn" id="verifyBtn" onclick="verifyCode()">验证</button>
+      <button class="verify-btn" id="resendBtn" onclick="resendCode()" style="background: #6c757d; margin-top: 10px;" disabled>重新发送</button>
+    </div>
 
-        // 页面元素
-        const emailInput = document.getElementById('email');
-        const sendBtn = document.getElementById('sendBtn');
-        const verifyCodeInput = document.getElementById('verifyCode');
-        const submitBtn = document.getElementById('submitBtn');
-        const tipDom = document.getElementById('tip');
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+  </div>
 
-        // ========== Turnstile 人机验证回调（修复所有逻辑） ==========
-        // 验证成功回调
-        window.onVerifySuccess = function(token) {
-            verifyToken = token;
-            sendBtn.disabled = false;
-            sendBtn.textContent = '获取验证码';
-            setTip('人机验证通过，可获取验证码', 'success');
-            console.log('✅ 人机验证成功，token：', token);
+  <script>
+    // ==================== 请修改为您的服务器 IP ====================
+    const API_BASE_URL = 'http://YOUR_SERVER_IP:3000/api';
+    // 例如：const API_BASE_URL = 'http://123.456.78.90:3000/api';
+    
+    let currentEmail = '';
+    let countdown = 60;
+    let countdownTimer = null;
+
+    function showMessage(text, type = 'info') {
+      const msgEl = document.getElementById('message');
+      msgEl.textContent = text;
+      msgEl.className = `message ${type}`;
+    }
+
+    function hideMessage() {
+      document.getElementById('message').className = 'message';
+    }
+
+    function switchToCodeStep(email) {
+      document.getElementById('emailStep').classList.add('hidden');
+      document.getElementById('codeStep').classList.remove('hidden');
+      document.getElementById('step1').classList.add('completed');
+      document.getElementById('step2').classList.add('active');
+      document.getElementById('line').classList.add('completed');
+      document.getElementById('sentEmailDisplay').textContent = email;
+    }
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function startCountdown() {
+      const resendBtn = document.getElementById('resendBtn');
+      const countdownText = document.getElementById('countdownText');
+      
+      countdown = 60;
+      resendBtn.disabled = true;
+      
+      if (countdownTimer) clearInterval(countdownTimer);
+      
+      countdownTimer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          resendBtn.disabled = false;
+          countdownText.textContent = '可以重新发送验证码';
+        } else {
+          countdownText.textContent = `${countdown}秒后可重新发送`;
         }
+      }, 1000);
+    }
 
-        // 验证过期回调
-        window.onVerifyExpire = function() {
-            verifyToken = '';
-            sendBtn.disabled = true;
-            sendBtn.textContent = '请先完成人机验证';
-            setTip('验证已过期，请重新完成人机验证', 'error');
-            console.log('⚠️ 人机验证已过期');
-        }
-
-        // 验证失败回调
-        window.onVerifyError = function(error) {
-            verifyToken = '';
-            sendBtn.disabled = true;
-            sendBtn.textContent = '请先完成人机验证';
-            setTip('人机验证失败，请刷新页面重试', 'error');
-            console.error('❌ 人机验证失败：', error);
-        }
-
-        // ========== 核心工具函数 ==========
-        // 邮箱格式校验
-        function isEmail(str) {
-            return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str);
-        }
-
-        // 提示信息设置
-        function setTip(text, type) {
-            tipDom.textContent = text;
-            tipDom.className = `tip ${type}`;
-        }
-
-        // 倒计时功能
-        function startCountdown() {
-            sendBtn.disabled = true;
-            sendBtn.textContent = `${countdown}s后重发`;
-            timer = setInterval(() => {
-                countdown--;
-                sendBtn.textContent = `${countdown}s后重发`;
-                if (countdown <= 0) {
-                    clearInterval(timer);
-                    countdown = 60;
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = '获取验证码';
-                    // 重置人机验证
-                    turnstile.reset();
-                    verifyToken = '';
-                }
-            }, 1000);
-        }
-
-        // ========== 事件绑定 ==========
-        // 发送验证码按钮点击事件
-        sendBtn.addEventListener('click', async () => {
-            const email = emailInput.value.trim();
-            // 基础校验
-            if (!email) {
-                setTip('请输入邮箱地址', 'error');
-                return;
-            }
-            if (!isEmail(email)) {
-                setTip('请输入正确的邮箱格式', 'error');
-                return;
-            }
-            if (!verifyToken) {
-                setTip('请先完成人机验证', 'error');
-                return;
-            }
-
-            // 按钮置灰，防止重复点击
-            sendBtn.disabled = true;
-            setTip('正在发送验证码...', '');
-
-            try {
-                // 调用后端接口
-                const res = await fetch(`${API_BASE}/api/send-code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: email,
-                        turnstileToken: verifyToken
-                    })
-                });
-                const data = await res.json();
-                console.log('后端返回结果：', data);
-
-                if (data.code === 0) {
-                    setTip(data.msg, 'success');
-                    startCountdown();
-                } else {
-                    setTip(data.msg, 'error');
-                    sendBtn.disabled = false;
-                    // 验证失败重置人机验证
-                    turnstile.reset();
-                    verifyToken = '';
-                }
-            } catch (err) {
-                console.error('请求错误详情：', err);
-                setTip('网络请求失败，请确认页面为HTTPS访问', 'error');
-                sendBtn.disabled = false;
-            }
+    async function sendVerificationCode() {
+      const emailInput = document.getElementById('emailInput');
+      const email = emailInput.value.trim();
+      
+      emailInput.classList.remove('error');
+      hideMessage();
+      
+      if (!email) {
+        showMessage('请输入邮箱地址', 'error');
+        emailInput.classList.add('error');
+        return;
+      }
+      
+      if (!validateEmail(email)) {
+        showMessage('请输入正确的邮箱格式', 'error');
+        emailInput.classList.add('error');
+        return;
+      }
+      
+      currentEmail = email;
+      
+      const sendBtn = document.getElementById('sendCodeBtn');
+      sendBtn.disabled = true;
+      sendBtn.textContent = '发送中...';
+      showMessage('正在发送验证码...', 'info');
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail })
         });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage('验证码已发送，请查收邮件', 'success');
+          switchToCodeStep(currentEmail);
+          startCountdown();
+        } else {
+          showMessage(data.msg || '发送失败，请稍后重试', 'error');
+        }
+      } catch (error) {
+        showMessage('网络错误，请检查服务器连接', 'error');
+        console.error('Error:', error);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送验证码';
+      }
+    }
 
-        // 提交验证按钮点击事件
-        submitBtn.addEventListener('click', async () => {
-            const email = emailInput.value.trim();
-            const code = verifyCodeInput.value.trim();
-
-            if (!email || !code) {
-                setTip('请输入邮箱和验证码', 'error');
-                return;
-            }
-            if (code.length !== 6) {
-                setTip('请输入6位数字验证码', 'error');
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/api/verify-code`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, code })
-                });
-                const data = await res.json();
-
-                if (data.code === 0) {
-                    setTip(data.msg, 'success');
-                    alert('验证成功！');
-                } else {
-                    setTip(data.msg, 'error');
-                }
-            } catch (err) {
-                setTip('请求失败，请刷新页面重试', 'error');
-            }
+    async function resendCode() {
+      if (countdown > 0) return;
+      
+      const resendBtn = document.getElementById('resendBtn');
+      resendBtn.disabled = true;
+      resendBtn.textContent = '发送中...';
+      showMessage('正在重新发送验证码...', 'info');
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail })
         });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage('验证码已重新发送', 'success');
+          startCountdown();
+          document.getElementById('codeInput').value = '';
+        } else {
+          showMessage(data.msg || '发送失败', 'error');
+          resendBtn.disabled = false;
+        }
+      } catch (error) {
+        showMessage('网络错误', 'error');
+        resendBtn.disabled = false;
+      } finally {
+        resendBtn.textContent = '重新发送';
+      }
+    }
 
-        // 输入框聚焦清除错误提示
-        emailInput.addEventListener('focus', () => setTip(''));
-        verifyCodeInput.addEventListener('focus', () => setTip(''));
-    </script>
+    async function verifyCode() {
+      const codeInput = document.getElementById('codeInput');
+      const code = codeInput.value.trim();
+      
+      codeInput.classList.remove('error');
+      hideMessage();
+      
+      if (!code || code.length !== 6) {
+        showMessage('请输入6位验证码', 'error');
+        codeInput.classList.add('error');
+        return;
+      }
+      
+      const verifyBtn = document.getElementById('verifyBtn');
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = '验证中...';
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail, code: code })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage('✅ 验证成功！', 'success');
+          document.getElementById('step2').classList.add('completed');
+        } else {
+          showMessage(data.msg || '验证码错误或已过期', 'error');
+          codeInput.classList.add('error');
+        }
+      } catch (error) {
+        showMessage('验证失败，请重试', 'error');
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = '验证';
+      }
+    }
+
+    // 回车事件
+    document.getElementById('emailInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendVerificationCode();
+    });
+    document.getElementById('codeInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') verifyCode();
+    });
+  </script>
 </body>
 </html>
